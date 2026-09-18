@@ -1,1 +1,0 @@
-This project (Iris), is an interpreted language built by Jayden Francis Kirumba Alade, August 13th 2026. All rights reserved. You are free to use the software for anything you desire - as long as it abides by the law and any third party agreements you (the programmer) may be part of - but please do not falsely claim to be the creator of it! Thank you.
