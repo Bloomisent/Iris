@@ -31,32 +31,26 @@ void Lexer_Advance(Lexer_T* lexer) {
 
 void Lexer_Skip_WhiteSpace(Lexer_T* lexer) {
 
-    while (lexer->c && isspace(
-            (unsigned char)lexer->c
-        )) {
+    while (lexer->c && isspace((unsigned char)lexer->c)) {
         Lexer_Advance(lexer);
     }
 }
 
+static char Lexer_Peek(Lexer_T* lexer) {
+    size_t next = lexer->i + 1;
+    return next < lexer->content_size ? lexer->contents[next] : '\0';
+}
+
 char* Lexer_Get_Current_Char_As_String(Lexer_T* lexer) {
-
     char* s = malloc(2);
-
     if (!s) exit(EXIT_FAILURE);
-
     s[0] = lexer->c;
     s[1] = '\0';
-
     return s;
 }
 
-Token_T* Lexer_Advance_With_Token(
-    Lexer_T* lexer,
-    Token_T* token
-) {
-
+Token_T* Lexer_Advance_With_Token(Lexer_T* lexer, Token_T* token) {
     Lexer_Advance(lexer);
-
     return token;
 }
 
@@ -266,15 +260,6 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
 
         switch (lexer->c) {
 
-            case '=':
-                return Lexer_Advance_With_Token(
-                    lexer,
-                    Init_Token(
-                        TOKEN_EQUALS,
-                        "="
-                    )
-                );
-
             case ';':
                 return Lexer_Advance_With_Token(
                     lexer,
@@ -409,13 +394,44 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                         "^"
                     )
                 );
-
-            case '>':
+            case '=':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_EQ, "=="));
+                }
                 return Lexer_Advance_With_Token(
                     lexer,
                     Init_Token(
-                        TOKEN_ARROW,
-                        ">"
+                        TOKEN_EQUALS,
+                        "="
+                    )
+                );
+
+            case '!':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_NEQ, "!="));
+                }
+                fprintf(stderr, "Lexer error: '!' must be followed by '=' at position %zu\n", lexer->i);
+                exit(EXIT_FAILURE);
+            case '>':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_GTE, ">="));
+                }
+                return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_GT, ">"));
+            case '<':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_LTE, "<="));
+                }
+                return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_LT, "<"));
+            case '.':
+                return Lexer_Advance_With_Token(
+                    lexer,
+                    Init_Token(
+                        TOKEN_DOT,
+                        "."
                     )
                 );
 
@@ -439,9 +455,6 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
         }
     }
 
-    return Init_Token(
-        TOKEN_EOF,
-        ""
-    );
+    return Init_Token(TOKEN_EOF, "");
 }
 

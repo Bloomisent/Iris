@@ -10,6 +10,35 @@
 
 extern char* read_file_to_string(const char *filename);
 
+char* get_directory(const char* path){
+    const char* last_slash = strrchr(path, '/');
+    const char* last_backslash = strrchr(path, '\\');
+    const char* last_sep = last_slash;
+    if (last_backslash != (void*)0 && (last_sep == (void*)0 || last_backslash > last_sep)) {
+        last_sep = last_backslash;
+    }
+
+    if (last_sep == (void*)0) {
+        char* empty = malloc(1);
+        empty[0] = '\0';
+        return empty; // no directory component -- file is in the cwd
+    }
+
+    size_t len = (size_t)(last_sep - path) + 1; // include the separator itself
+    char* dir = malloc(len + 1);
+    memcpy(dir, path, len);
+    dir[len] = '\0';
+    return dir;
+};
+
+char* join_path(const char* base_dir, const char* relative_path){
+    size_t total_len = strlen(base_dir) + strlen(relative_path) + 1;
+    char* result = malloc(total_len);
+    strcpy(result, base_dir);
+    strcat(result, relative_path);
+    return result;
+};
+
 static Scope_T* Get_Node_Scope(Parser_T* Parser, AST_T* Node) {
     return Node->scope == (void*)0 ? Parser->Scope : Node->scope;
 }
@@ -86,7 +115,7 @@ AST_T* Parser_Parse_Statement(Parser_T* Parser, Scope_T* Scope){
             AST_T* expr = Parser_Parse_Expr(Parser, Scope);
 
             if (Parser->current_token->type == TOKEN_EQUALS) {
-                if (expr->type != AST_ARROW && expr->type != AST_VARIABLE) {
+                if (expr->type != AST_DOT && expr->type != AST_VARIABLE) {
                     printf("Tripped on assignment, left-hand side must be a member access (obj > \"key\") or a variable\n");
                     exit(1);
                 }
@@ -136,9 +165,31 @@ AST_T* Parser_Parse_Statements(Parser_T* Parser, Scope_T* Scope){
     return compound;
 };
 
-// Precedence, loosest to tightest: +/- (Expr) > * // (Term) > member access '>' (bound inside Term,
-// tighter than *,/) > atoms (Factor). Arrow parsing lives only in Term, not duplicated in Expr.
 AST_T* Parser_Parse_Expr(Parser_T* Parser, Scope_T* Scope){
+    AST_T* node = Parser_Parse_Additive(Parser, Scope);
+
+    while (Parser->current_token->type == TOKEN_GT ||
+           Parser->current_token->type == TOKEN_LT ||
+           Parser->current_token->type == TOKEN_GTE ||
+           Parser->current_token->type == TOKEN_LTE ||
+           Parser->current_token->type == TOKEN_EQ ||
+           Parser->current_token->type == TOKEN_NEQ) {
+        int op = Parser->current_token->type;
+        Parser_Eat(Parser, op);
+
+        AST_T* right = Parser_Parse_Additive(Parser, Scope);
+
+        AST_T* binop = Init_AST(AST_BINOP);
+        binop->binop_left = node;
+        binop->binop_op = op;
+        binop->binop_right = right;
+        binop->scope = Scope;
+
+        node = binop;
+    };
+    return node;
+};
+AST_T* Parser_Parse_Additive(Parser_T* Parser, Scope_T* Scope){
     AST_T* node = Parser_Parse_Term(Parser, Scope);
 
     while (Parser->current_token->type == TOKEN_PLUS || Parser->current_token->type == TOKEN_MINUS) {
@@ -175,11 +226,11 @@ AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope){
     };
     return Init_AST(AST_NOOP);
 };
-static AST_T* Parser_Parse_Arrow_Chain(Parser_T* Parser, Scope_T* Scope) {
+static AST_T* Parser_Parse_Dot_Chain(Parser_T* Parser, Scope_T* Scope) {
     AST_T* node = Parser_Parse_Factor(Parser, Scope);
 
-    while (Parser->current_token->type == TOKEN_ARROW) {
-        Parser_Eat(Parser, TOKEN_ARROW);
+    while (Parser->current_token->type == TOKEN_DOT) {
+        Parser_Eat(Parser, TOKEN_DOT);
 
         if (Parser->current_token->type == TOKEN_ID && strcmp(Parser->current_token->value, "init") == 0) {
             Parser_Eat(Parser, TOKEN_ID);
@@ -213,24 +264,24 @@ static AST_T* Parser_Parse_Arrow_Chain(Parser_T* Parser, Scope_T* Scope) {
         }
         AST_T* right = Parser_Parse_String(Parser, Scope);
 
-        AST_T* arrow = Init_AST(AST_ARROW);
-        arrow->arrow_left = node;
-        arrow->arrow_right = right;
-        arrow->scope = Scope;
+        AST_T* dot = Init_AST(AST_DOT);
+        dot->dot_left = node;
+        dot->dot_right = right;
+        dot->scope = Scope;
 
-        node = arrow;
+        node = dot;
     };
 
     return node;
 };
 AST_T* Parser_Parse_Term(Parser_T* Parser, Scope_T* Scope){
-    AST_T* node = Parser_Parse_Arrow_Chain(Parser, Scope);
+    AST_T* node = Parser_Parse_Dot_Chain(Parser, Scope);
 
     while (Parser->current_token->type == TOKEN_MULTIPLY || Parser->current_token->type == TOKEN_DIVIDE) {
         int op = Parser->current_token->type;
         Parser_Eat(Parser, op);
 
-        AST_T* right = Parser_Parse_Arrow_Chain(Parser, Scope);
+        AST_T* right = Parser_Parse_Dot_Chain(Parser, Scope);
 
         AST_T* binop = Init_AST(AST_BINOP);
         binop->binop_left = node;
@@ -656,6 +707,67 @@ AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope) {
     Parser_Eat(Parser, TOKEN_RCURLY); // else compound
     return ast;
 };
+
+AST_T* Parser_Parse_Checks(Parser_T* Parser, Scope_T* Scope) {
+    AST_T* ast = Init_AST(AST_CHECKS);
+    Parser_Eat(Parser, TOKEN_ID); // checks
+    Parser_Eat(Parser, TOKEN_LPAREN);
+
+    ast->checks_base_var = Parser_Parse_Id(Parser, Scope);
+
+    Parser_Eat(Parser, TOKEN_RPAREN);
+    Parser_Eat(Parser, TOKEN_LCURLY); // checks compound
+
+    int index = 0;
+
+    Parser_Eat(Parser, TOKEN_LPAREN);
+
+    ast->checks_condition_body = calloc(1, sizeof(struct AST_STRUCT*));
+    ast->checks_do_body = calloc(1, sizeof(struct AST_STRUCT*));
+    ast->checks_condition_body[index] = Parser_Parse_Expr(Parser, Scope);
+
+    Parser_Eat(Parser, TOKEN_RPAREN);
+    Parser_Eat(Parser, TOKEN_COLON);
+
+    Parser_Eat(Parser, TOKEN_LCURLY);
+
+    ast->checks_do_body[index] = Parser_Parse_Statements(Parser, Scope);
+
+    Parser_Eat(Parser, TOKEN_RCURLY);
+    index++;
+
+    while (Parser->current_token->type == TOKEN_COMMA) {
+        ast->checks_condition_body = realloc(
+            ast->checks_condition_body,
+            index * sizeof(struct AST_STRUCT*)
+        );
+        ast->checks_do_body = realloc(
+            ast->checks_do_body,
+            index * sizeof(struct AST_STRUCT*)
+        );
+        ast->checks_condition_size = index;
+
+        Parser_Eat(Parser, TOKEN_COMMA);
+
+        Parser_Eat(Parser, TOKEN_LPAREN);
+
+        ast->checks_condition_body[index] = Parser_Parse_Expr(Parser, Scope);
+
+        Parser_Eat(Parser, TOKEN_RPAREN);
+        Parser_Eat(Parser, TOKEN_COLON);
+
+        Parser_Eat(Parser, TOKEN_LCURLY);
+
+        ast->checks_do_body[index] = Parser_Parse_Statements(Parser, Scope);
+
+        Parser_Eat(Parser, TOKEN_RCURLY);
+        index++;
+    };
+
+    Parser_Eat(Parser, TOKEN_RCURLY);
+    return ast;
+};
+
 AST_T* Parser_Parse_For(Parser_T* Parser, Scope_T* Scope) {
     AST_T* ast = Init_AST(AST_FOR);
     ast->scope = Scope;
@@ -705,7 +817,9 @@ AST_T* Parser_Parse_Return(Parser_T* Parser, Scope_T* Scope) {
 AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
     Parser_Eat(Parser, TOKEN_ID); // include
     AST_T* path_node = Parser_Parse_String(Parser, Scope);
-    char* path = path_node->string_value;
+    char* requested_path = path_node->string_value;
+
+    char* path = join_path(Parser->current_dir, requested_path);
 
     for (size_t i = 0; i < Parser->included_paths_size; i++) {
         if (strcmp(Parser->included_paths[i], path) == 0) {
@@ -733,6 +847,7 @@ AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
     Parser->lexer = include_lexer;
     Parser->current_token = Lexer_Get_Next_Token(include_lexer);
     Parser->previous_token = Parser->current_token;
+    Parser->current_dir = get_directory(path);
 
     AST_T* included_statements = Parser_Parse_Statements(Parser, Scope);
 
@@ -792,6 +907,8 @@ AST_T* Parser_Parse_Id(Parser_T* Parser, Scope_T* Scope){
         return Parser_Parse_Return(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "include") == 0) {
         return Parser_Parse_Include(Parser, Scope);
+    } else if (strcmp(Parser->current_token->value, "checks") == 0) {
+        return Parser_Parse_Checks(Parser, Scope);
     } else if (Parser_Is_Known_Table(Parser, Parser->current_token->value)) {
         return Parser_Parse_Table(Parser, Scope);
     } else if (Parser_Is_Known_Dict(Parser, Parser->current_token->value)) {

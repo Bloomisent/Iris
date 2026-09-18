@@ -15,70 +15,70 @@ class Vector3 {
 
 func Vector2Add(v1, v2){
     Vector2 result;
-    result > "x" = v1 > "x" + v2 > "x";
-    result > "y" = v1 > "y" + v2 > "y";
+    result."x" = v1."x" + v2."x";
+    result."y" = v1."y" + v2."y";
     return result;
 };
 
 func Vector2Subtract(v1, v2){
     Vector2 result;
-    result > "x" = v1 > "x" - v2 > "x";
-    result > "y" = v1 > "y" - v2 > "y";
+    result."x" = v1."x" - v2."x";
+    result."y" = v1."y" - v2."y";
     return result;
 };
 
 func Vector2Multiply(v1, v2){
     Vector2 result;
-    result > "x" = v1 > "x" * v2 > "x";
-    result > "y" = v1 > "y" * v2 > "y";
+    result."x" = v1."x" * v2."x";
+    result."y" = v1."y" * v2."y";
     return result;
 };
 
 func Vector2Divide(v1, v2){
     Vector2 result;
-    result > "x" = v1 > "x" / v2 > "x";
-    result > "y" = v1 > "y" / v2 > "y";
+    result."x" = v1."x" / v2."x";
+    result."y" = v1."y" / v2."y";
     return result;
 };
 
 func Vector2Magnitude(vector2){
-    var basis = vector2 > "x" * vector2 > "x" + vector2 > "y" * vector2 > "y";
-    vector2 > "magnitude" = sqrt(basis);
+    var basis = vector2."x" * vector2."x" + vector2."y" * vector2."y";
+    vector2."magnitude" = sqrt(basis);
 };
 
 func Vector3Add(v1, v2){
     Vector3 result;
-    result > "x" = v1 > "x" + v2 > "x";
-    result > "y" = v1 > "y" + v2 > "y";
-    result > "z" = v1 > "z" + v2 > "z";
+    result."x" = v1."x" + v2."x";
+    result."y" = v1."y" + v2."y";
+    result."z" = v1."z" + v2."z";
     return result;
 };
 
 func Vector3Subtract(v1, v2){
     Vector3 result;
-    result > "x" = v1 > "x" - v2 > "x";
-    result > "y" = v1 > "y" - v2 > "y";
-    result > "z" = v1 > "z" - v2 > "z";
+    result."x" = v1."x" - v2."x";
+    result."y" = v1."y" - v2."y";
+    result."z" = v1."z" - v2."z";
     return result;
 };
 
 func Vector3Multiply(v1, v2){
     Vector3 result;
-    result > "x" = v1 > "x" * v2 > "x";
-    result > "y" = v1 > "y" * v2 > "y";
-    result > "z" = v1 > "z" * v2 > "z";
+    result."x" = v1."x" * v2 . "x";
+    result."y" = v1."y" * v2 . "y";
+    result."z" = v1."z" * v2 ."z";
     return result;
 };
 
 func Vector3Divide(v1, v2){
     Vector3 result;
-    result > "x" = v1 > "x" / v2 > "x";
-    result > "y" = v1 > "y" / v2 > "y";
-    result > "z" = v1 > "z" / v2 > "z";
+    result."x" = v1."x" / v2."x";
+    result."y" = v1."y" / v2."y";
+    result."z" = v1."z" / v2."z";
     return result;
 };
 
 func Vector3Magnitude(vector3){
-    var basis = vector3 > "x" * vector3 > "x" + vector3 > "y" * vector3 > "y" + vector3 > "z" * vector3 > "z";
-    vector3 > "magnitude" = sqrt(basis);
+    var basis = vector3."x" * vector3."x" + vector3."y" * vector3."y" + vector3."z" * vector3."z";
+    vector3."magnitude" = sqrt(basis);
 };

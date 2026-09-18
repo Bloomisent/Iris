@@ -22,153 +22,46 @@ typedef struct PARSER_STRUCT {
 
     char** included_paths;
     size_t included_paths_size;
+
+    char* current_dir;
 } Parser_T;
 
-int Parser_Is_Known_Table(
-    Parser_T*,
-    const char*
-);
+int Parser_Is_Known_Table(Parser_T*, const char*);
+int Parser_Is_Known_Class(Parser_T*, const char*);
+int Parser_Is_Known_Dict(Parser_T*, const char*);
 
-int Parser_Is_Known_Class(
-    Parser_T*,
-    const char*
-);
+Parser_T* Init_Parser(Lexer_T* Lexer);
 
-int Parser_Is_Known_Dict(
-    Parser_T*,
-    const char*
-);
+void Parser_Eat(Parser_T* Parser, int token_type);
 
-Parser_T* Init_Parser(
-    Lexer_T*
-);
+AST_T* Parser_Parse(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Statement(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Statements(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Expr(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Additive(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Term(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Table_Definition(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Table(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Dictionary_Definition(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Dictionary(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Class_Definition(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Class(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Function_Definition(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Function_Call(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_If(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Checks(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Case(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_For(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_While(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Return(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_String(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Number(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Variable_Definition(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Variable(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Id(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope);
 
-void Parser_Eat(
-    Parser_T*,
-    int
-);
-
-AST_T* Parser_Parse(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Statement(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Statements(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Expr(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Factor(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Term(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Table_Definition(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Table(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Dictionary_Definition(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Dictionary(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Class_Definition(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Class(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Function_Definition(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Function_Call(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_If(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_If_Else(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_For(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_While(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Return(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_String(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Number(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Variable_Definition(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Variable(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Id(
-    Parser_T*,
-    Scope_T*
-);
-
-AST_T* Parser_Parse_Include(
-    Parser_T*,
-    Scope_T*
-);
+char* get_directory(const char* path);
+char* join_path(const char* base_dir, const char* relative_path);

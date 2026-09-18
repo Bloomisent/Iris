@@ -26,25 +26,25 @@ func clamp(value, low, high) {
 # used while modulo system hasn't been developed yet #
 func mod(a, b) {
     var remainder = a;
-    while (compare(remainder, b, 3)) {
+    while (remainder >= b) {
         remainder = remainder - b;
     };
     return remainder;
 };
 
 func isEven(n) {
-    return compare(mod(n, 2), 0, 0);
+    return mod(n, 2) == 0;
 };
 
 func isOdd(n) {
-    return compare(mod(n, 2), 0, 5);
+    return mod(n, 2) != 0;
 };
 
 # base raised to a non-negative integer exponent #
 func pow(base, exponent) {
     var result = 1;
     var i = 0;
-    while (compare(i, exponent, 2)) {
+    while (i < exponent) {
         result = result * base;
         i = i + 1;
     };
@@ -53,17 +53,17 @@ func pow(base, exponent) {
 
 # Newton's method -- converges to float precision well within 25 iterations #
 func sqrt(n) {
-    if (compare(n, 0, 2)) {
+    if (n < 0) {
         print("sqrt: cannot compute square root of a negative number%n");
         return 0;
     };
-    if (compare(n, 0, 0)) {
+    if (n == 0) {
         return 0;
     };
 
     var guess = n;
     var i = 0;
-    while (compare(i, 25, 2)) {
+    while (i < 25) {
         guess = (guess + n / guess) / 2;
         i = i + 1;
     };
@@ -71,7 +71,7 @@ func sqrt(n) {
 };
 
 func factorial(n) {
-    if (compare(n, 1, 4)) {
+    if (n <= 1) {
         return 1;
     };
     return n * factorial(n - 1);
@@ -79,7 +79,7 @@ func factorial(n) {
 
 # Euclidean algorithm #
 func gcd(a, b) {
-    if (compare(b, 0, 0)) {
+    if (b == 0) {
         return a;
     };
     return gcd(b, mod(a, b));
@@ -93,8 +93,8 @@ func lcm(a, b) {
 func sum(t, size) {
     var total = 0;
     var i = 1;
-    while (compare(i, size, 4)) {
-        total = total + table_get_index(t, i);
+    while (i <= size) {
+        total = total + table_get_from_index(t, i);
         i = i + 1;
     };
     return total;

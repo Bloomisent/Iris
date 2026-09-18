@@ -61,18 +61,19 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        char* example_contents = read_file_to_string(argv[1]);
+        char* contents = read_file_to_string(argv[1]);
 
-        if (example_contents != NULL) {
-            Lexer_T* Lexer = Init_Lexer(example_contents);
+        if (contents != NULL) {
+            Lexer_T* Lexer = Init_Lexer(contents);
             Parser_T* Parser = Init_Parser(Lexer);
+            Parser->current_dir = get_directory(argv[1]);
 
             AST_T* root = Parser_Parse(Parser, Parser->Scope);
             Visitor_T* visitor = Init_Visitor();
             AST_T* visit = Visitor_Visit(visitor, root);
             Visitor_Clean(visitor, root);
             free(visit);
-            free(example_contents);  // frees memory
+            free(contents);  // frees memory
         } else {
             printf("FILE IS NULL.\n");
         }

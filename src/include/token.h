@@ -17,7 +17,13 @@ typedef enum {
     TOKEN_DIVIDE,
     TOKEN_MODULO,
     TOKEN_EXPONENT,
-    TOKEN_ARROW,
+    TOKEN_GT, //comparison
+    TOKEN_LT,
+    TOKEN_GTE,
+    TOKEN_LTE,
+    TOKEN_EQ,
+    TOKEN_NEQ,//comparison
+    TOKEN_DOT,
     TOKEN_NUMBER,
     TOKEN_EOF,
     TOKEN_COLON,

@@ -1,0 +1,80 @@
+include "../libs/vectors.iris";
+include "../libs/strings.iris";
+include "../libs/arrays.iris";
+
+var base = "Hello ";
+var joined = strcat(base, "World!");
+
+print(joined, "%n");
+
+var iris = "Iris";
+
+print(strlen(iris), "%n");
+print(strlen("Player"), "%n");
+
+table one = [1, 2, 3];
+table two = [4, 5, 6];
+
+var three = one;
+
+tappend(three, 3, two, 3);
+print(one, "%n", two, "%n", three, "%n");
+
+class Human {
+    "Name" : "Mike",
+    "Age" : 25,
+    "Health" : 0,
+    "Stamina" : 0
+};
+
+Human Soldier;
+
+print(type(Human), "%n");
+print(type(Soldier), "%n");
+
+Vector2 me;
+Vector3 me2;
+
+me."x" = 14;
+me."y" = 35;
+
+Vector2Magnitude(me);
+
+me2."x" = 0;
+me2."y" = 1;
+me2."z" = 45;
+
+Vector3Magnitude(me2);
+
+print("MAGNITUDE 1: ", me."magnitude");
+print("MAGNITUDE 2: ", me2."magnitude", "%n");
+
+var greeting = "Good afternoon!";
+
+print(strfind(greeting, "Food"), "%n");
+print(strfind(greeting, "afternoon"), "%n");
+
+var soldier_name = Soldier."Name";
+
+checks (soldier_name) {
+    ("Mike") : {
+        print("Mike%n");
+    },
+    ("John") : {
+        print("John%n");
+    }
+};
+
+dict dict_e = ["a" : 0, "b" : 1, "c" : 2];
+
+dict_set_index(dict_e, "x", 4);
+
+print(dict_get_from_index(dict_e, "c"), "%n");
+print(dict_get_from_index(dict_e, "x"), "%n");
+print(dict_get_from_index(dict_e, "v"), "%n");
+
+var goodbye = "n%!dlroW eybdooG";
+print(strrev(goodbye));
+
+var success = writeFile("lol.org", "hello world!", false);
+print(success);

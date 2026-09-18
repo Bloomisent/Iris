@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 #include <ctype.h>
 
 #include "include/scope.h"
@@ -52,10 +53,11 @@ AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node){
         case AST_FUNCTION_DEFINITION: return VV_Function_Definition(visitor, node); break;
         case AST_IF: return VV_If(visitor, node); break;
         case AST_IF_ELSE: return VV_If_Else(visitor, node); break;
+        case AST_CHECKS: return VV_Checks(visitor, node); break;
         case AST_FOR: return VV_For(visitor, node); break;
         case AST_WHILE: return VV_While(visitor, node); break;
         case AST_BINOP: return VV_BinOp(visitor, node); break;
-        case AST_ARROW: return VV_Arrow(visitor, node); break;
+        case AST_DOT: return VV_Dot(visitor, node); break;
         case AST_RETURN: return VV_Return(visitor, node); break;
         case AST_ASSIGNMENT: return VV_Assignment(visitor, node); break;
         case AST_CLASS_INSTANTIATION: return VV_Class_Instantiation(visitor, node); break;
@@ -141,6 +143,32 @@ AST_T* VV_If_Else(Visitor_T* visitor, AST_T* node) {
         return Visitor_Visit(visitor, node->if_body);
     };
     return Visitor_Visit(visitor, node->if_else_body);
+};
+AST_T* VV_Checks(Visitor_T* visitor, AST_T* node) {
+    AST_T* condition_var = Visitor_Visit(visitor, node->checks_base_var);
+    AST_T** conditionals = node->checks_condition_body;
+
+    int is_truthy = 0;
+
+    for (int i=0;i<node->checks_condition_size;i++) {
+        AST_T* condition_to_check = Visitor_Visit(visitor, node->checks_condition_body[i]);
+        if (condition_var->type != condition_to_check->type) {
+            printf("Tripped on checks, incompatible types\n");
+            exit(1);
+        }
+        switch (condition_var->type) {
+            case AST_NUMBER: is_truthy = (condition_to_check->number_value == condition_var->number_value); break;
+            case AST_STRING:  is_truthy = (condition_to_check->string_value != (void*)0 &&
+                                            strcmp(condition_to_check->string_value, condition_var->string_value) == 0); break;
+            case AST_BOOL:  is_truthy = (condition_to_check->bool_value == condition_var->bool_value); break;
+            default: is_truthy = 0; break;
+        }
+        if (is_truthy) {
+            return Visitor_Visit(visitor, node->checks_do_body[i]);
+        }
+    };
+
+    return Init_AST(AST_NOOP);
 };
 AST_T* VV_For(Visitor_T* visitor, AST_T* node) {
     char* loop_var_name;
@@ -235,11 +263,54 @@ AST_T* VV_While(Visitor_T* visitor, AST_T* node) {
             break; // a 'return' fired inside the loop body -- stop iterating
         }
     };
+    free(ttt);
     return last_var;
 };
 AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
     AST_T* left = Visitor_Visit(visitor, node->binop_left);
     AST_T* right = Visitor_Visit(visitor, node->binop_right);
+
+    int op = node->binop_op;
+    int is_comparison = (op == TOKEN_GT || op == TOKEN_LT || op == TOKEN_GTE ||
+                         op == TOKEN_LTE || op == TOKEN_EQ || op == TOKEN_NEQ);
+
+    if (is_comparison) {
+        if (left->type != right->type) {
+            printf("Tripped on comparison, incomparable types (%d, %d)\n", left->type, right->type);
+            exit(1);
+        }
+
+        AST_T* result = Init_AST(AST_BOOL);
+
+        /* == and != work on any comparable type; ordering is numbers only. */
+        if (op == TOKEN_EQ || op == TOKEN_NEQ) {
+            int equal = 0;
+            switch (left->type) {
+                case AST_NUMBER: equal = (left->number_value == right->number_value); break;
+                case AST_STRING: equal = (left->string_value != (void*)0 &&
+                                          right->string_value != (void*)0 &&
+                                          strcmp(left->string_value, right->string_value) == 0); break;
+                case AST_BOOL:   equal = (left->bool_value == right->bool_value); break;
+                default:
+                    printf("Tripped on comparison, unsupported type %d for equality\n", left->type);
+                    exit(1);
+            }
+            result->bool_value = (op == TOKEN_EQ) ? equal : !equal;
+            return result;
+        }
+
+        if (left->type != AST_NUMBER) {
+            printf("Tripped on comparison, ordering operators require numbers (got type %d)\n", left->type);
+            exit(1);
+        }
+        switch (op) {
+            case TOKEN_GT:  result->bool_value = (left->number_value >  right->number_value); break;
+            case TOKEN_LT:  result->bool_value = (left->number_value <  right->number_value); break;
+            case TOKEN_GTE: result->bool_value = (left->number_value >= right->number_value); break;
+            case TOKEN_LTE: result->bool_value = (left->number_value <= right->number_value); break;
+        }
+        return result;
+    };
 
     if (left->type == AST_NUMBER && right->type == AST_NUMBER) {
         AST_T* result = Init_AST(AST_NUMBER);
@@ -254,6 +325,14 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                 }
                 result->number_value = left->number_value / right->number_value;
                 break;
+            case TOKEN_MODULO:
+                if (right->number_value == 0.0f) {
+                    printf("Tripped on binary operation, modulo by zero\n");
+                    exit(1);
+                }
+                result->number_value = fmodf(left->number_value, right->number_value);
+                break;
+            case TOKEN_EXPONENT: result->number_value = powf(left->number_value, right->number_value); break;
             default:
                 printf("Tripped on binary operation, unsupported operator %d\n", node->binop_op);
                 exit(1);
@@ -273,12 +352,12 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
 
     return Init_AST(AST_NOOP);
 };
-AST_T* VV_Arrow(Visitor_T* visitor, AST_T* node) {
-    AST_T* left = Visitor_Visit(visitor, node->arrow_left);
-    AST_T* right = Visitor_Visit(visitor, node->arrow_right);
+AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
+    AST_T* left = Visitor_Visit(visitor, node->dot_left);
+    AST_T* right = Visitor_Visit(visitor, node->dot_right);
 
     if (right->type != AST_STRING) {
-        printf("Tripped on arrow operation, key must be a string (got type %d)\n", right->type);
+        printf("Tripped on dot operation, key must be a string (got type %d)\n", right->type);
         exit(1);
     }
 
@@ -289,12 +368,12 @@ AST_T* VV_Arrow(Visitor_T* visitor, AST_T* node) {
                 return Visitor_Visit(visitor, left->dictionary_definition_value[i]);
             }
         }
-        printf("Tripped on arrow operation, key '%s' not found in dictionary\n", right->string_value);
+        printf("Tripped on dot operation, key '%s' not found in dictionary\n", right->string_value);
         exit(1);
     } else if (left->type == AST_CLASS_DEFINITION) {
         if (strcmp(right->string_value, "init") == 0) {
             if (left->init_step == 0) {
-                printf("Tripped on arrow operation, class '%s' has no init defined\n", left->class_definition_name);
+                printf("Tripped on dot operation, class '%s' has no init defined\n", left->class_definition_name);
                 exit(1);
             }
             return Visitor_Visit(visitor, left->init_value);
@@ -305,10 +384,10 @@ AST_T* VV_Arrow(Visitor_T* visitor, AST_T* node) {
                 return Visitor_Visit(visitor, left->class_definition_value[i]);
             }
         }
-        printf("Tripped on arrow operation, key '%s' not found in class\n", right->string_value);
+        printf("Tripped on dot operation, key '%s' not found in class\n", right->string_value);
         exit(1);
     } else {
-        printf("Tripped on arrow operation, invalid type accessed (%d)\n", left->type);
+        printf("Tripped on dot operation, invalid type accessed (%d)\n", left->type);
         exit(1);
     }
 
@@ -395,8 +474,6 @@ AST_T* VV_Init_Call(Visitor_T* visitor, AST_T* node) {
     AST_T* result = Visitor_Visit(visitor, instance->init_value);
     visitor->returning = 0;
 
-    // Same stack-discipline cleanup as ordinary function calls -- pop this call's
-    // bindings (self + params) back off the shared scope.
     call_scope->variable_definitions_size = saved_scope_size;
 
     return result;
@@ -407,7 +484,7 @@ AST_T* VV_Return(Visitor_T* visitor, AST_T* node) {
     return result;
 };
 AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node) {
-    AST_T* target = node->assignment_target; // raw AST_ARROW: unevaluated so we can reach its left/right
+    AST_T* target = node->assignment_target; // raw AST_DOT: unevaluated so we can reach its left/right
 
     if (target->type == AST_VARIABLE) {
         AST_T* value = Visitor_Visit(visitor, node->assignment_value);
@@ -422,8 +499,8 @@ AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node) {
         return value;
     };
 
-    AST_T* left = Visitor_Visit(visitor, target->arrow_left);   // the dict/class instance -- same live pointer stored in scope
-    AST_T* key = Visitor_Visit(visitor, target->arrow_right);
+    AST_T* left = Visitor_Visit(visitor, target->dot_left);   // the dict/class instance -- same live pointer stored in scope
+    AST_T* key = Visitor_Visit(visitor, target->dot_right);
 
     if (key->type != AST_STRING) {
         printf("Tripped on assignment, key must be a string (got type %d)\n", key->type);
@@ -486,12 +563,20 @@ AST_T* VV_Function_Definition(Visitor_T* visitor, AST_T* node) {
     return node;
 };
 AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
-    if (strcmp(node->function_call_name, "print") == 0) { // sees if func name is print
+    if (strcmp(node->function_call_name, "print") == 0) {
         return builtin_function_print(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "type") == 0) {
         return builtin_function_type(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "dict_get_index") == 0) {
+        return builtin_function_dict_get_index(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "dict_get_from_index") == 0) {
+        return builtin_function_dict_get_from_index(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "dict_set_index") == 0) {
+        return builtin_function_dict_set_index(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "table_get_index") == 0) {
         return builtin_function_table_get_index(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "table_get_from_index") == 0) {
+        return builtin_function_table_get_from_index(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "table_set_index") == 0) {
         return builtin_function_table_set_index(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "charAt") == 0) {
@@ -500,8 +585,34 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         return builtin_function_str_edit(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "ForEach") == 0) {
         return builtin_function_for_each(visitor, node->function_call_arguments, node->function_call_arguments_size);
-    } else if (strcmp(node->function_call_name, "compare") == 0) {
-        return builtin_function_compare(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "toNumber") == 0) {
+        return builtin_function_to_number(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "toString") == 0) {
+        return builtin_function_to_string(visitor, node->function_call_arguments, node->function_call_arguments_size);
+     } else if (strcmp(node->function_call_name, "readFile") == 0) {
+        return builtin_function_read_file(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "writeFile") == 0) {
+        return builtin_function_write_file(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowCreate") == 0) {
+        return builtin_function_window_create(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowShouldClose") == 0) {
+        return builtin_function_window_should_close(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowClear") == 0) {
+        return builtin_function_window_clear(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowDrawRect") == 0) {
+        return builtin_function_window_draw_rect(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowDrawText") == 0) {
+        return builtin_function_window_draw_text(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowPresent") == 0) {
+        return builtin_function_window_present(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowMouseX") == 0) {
+        return builtin_function_window_mouse_x(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowMouseY") == 0) {
+        return builtin_function_window_mouse_y(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowMousePressed") == 0) {
+        return builtin_function_window_mouse_pressed(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowClose") == 0) {
+        return builtin_function_window_close(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else {
         AST_T* fdef = Scope_Get_Function_Definition(node->scope, node->function_call_name);
 

@@ -1,0 +1,56 @@
+include "../libs/ui.iris";
+
+var sheight = 400;
+var swidth = 500;
+
+windowCreate("Iris UI Test", swidth, sheight);
+
+Rectangle bg;
+bg."x" = 0;
+bg."y" = 0;
+bg."w" = swidth;
+bg."h" = sheight;
+bg."bgR" = 18;
+bg."bgG" = 18;
+bg."bgB" = 18;
+
+Button b;
+b."x" = 150;
+b."y" = 120;
+b."w" = 100;
+b."h" = 40;
+b."bgR" = 50;
+b."bgG" = 50;
+b."bgB" = 50;
+b."label" = "Hello World!";
+
+Rectangle b_border;
+bg."x" = 150;
+bg."y" = 120;
+bg."w" = 100;
+bg."h" = 40;
+bg."bgR" = 50;
+bg."bgG" = 50;
+bg."bgB" = 50;
+
+Text txt;
+txt."w" = 40;
+txt."h" = 20;
+txt."x" = txt."w" / 4.5;
+txt."y" = 0;
+txt."text" = "Wassup dawg?";
+
+while (windowShouldClose() == 0) {
+    windowClear(240, 240, 240);
+    uiRectangleDraw(bg);
+    uiTextDraw(txt);
+
+    uiButtonDraw(b); # core #
+    uiRectangleDraw(b_border);
+    if (uiButtonClicked(b) == 1) {
+        print("Hello World%n");
+    };
+    windowPresent();
+};
+
+windowClose();

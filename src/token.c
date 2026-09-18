@@ -4,27 +4,18 @@
 #include "include/token.h"
 
 Token_T* Init_Token(int type,const char* value) {
-    Token_T* t = calloc(
-        1,
-        sizeof *t
-    );
-
+    Token_T* t = calloc(1, sizeof *t);
     if (!t) exit(EXIT_FAILURE);
 
     t->type = (TokenType)type;
 
-    size_t n = value? strlen(value) : 0;
-
+    size_t n = value ? strlen(value) : 0;
     t->value = malloc(n + 1);
 
     if (!t->value) exit(EXIT_FAILURE);
 
     if (value) {
-        memcpy(
-            t->value,
-            value,
-            n + 1
-        );
+        memcpy(t->value, value, n + 1);
     } else {
         t->value[0] = '\0';
     };

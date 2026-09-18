@@ -1,7 +1,3 @@
-class String {
-    "main" : ""
-};
-
 func strcat(string1, string2) {
     return string1 + string2;
 };
@@ -23,34 +19,30 @@ func strrev(string) {
 
     var i = strlen(string);
 
-    for (i: compare(i, 0, 5): "--"){
+    for (i: i != 0: "--"){
         reversed = strcat(reversed, charAt(string, i));
     };
     return reversed;
 };
 
 func strfind(string, substring) {
-    var times = 0;
-    var indexAt = 0;
+    var strLen = strlen(string);
+    var subLen = strlen(substring);
+    var lastStart = strLen - subLen + 1;
 
-    var i = 0;
-    var max = strlen(string);
-
-    for (i: compare(i, max, 4): "++"){
-        if (compare(charAt(string, i), charAt(substring, 1), 0)) {
-            var x = i + 1;
-            var a = 0;
-            indexAt = i;
-            for (x: compare(x, strlen(substring), 4): "++"){
-               if (compare(charAt(string, x), charAt(substring, a), 5)) {
-                    return 0-1;
-               };
-               if (compare(a, strlen(substring), 2)){
-                    a = a + 1;
-               };
+    var i = 1;
+    for (i: i <= lastStart: "++") {
+        var matched = 1;
+        var a = 1;
+        for (a: a <=subLen: "++") {
+            if (charAt(string, i + a - 1) != charAt(substring, a)) {
+                matched = 0;
             };
         };
+        if (matched == 1) {
+            return i;
+        };
     };
-    return indexAt;
+    return 0 - 1;
 };
 

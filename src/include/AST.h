@@ -14,7 +14,7 @@ typedef enum {
     AST_FOR,
     AST_WHILE,
     AST_BINOP,
-    AST_ARROW,
+    AST_DOT,
     AST_VARIABLE,
     AST_TABLE,
     AST_DICTIONARY,
@@ -26,6 +26,7 @@ typedef enum {
     AST_RETURN,
     AST_COMPOUND,
     AST_ASSIGNMENT,
+    AST_CHECKS,
     AST_CLASS_INSTANTIATION,
     AST_INIT_CALL,
     AST_NOOP
@@ -55,6 +56,11 @@ typedef struct AST_STRUCT {
     struct AST_STRUCT* if_body;
     struct AST_STRUCT* if_else_body;
 
+    struct AST_STRUCT* checks_base_var; //var to be checked
+    struct AST_STRUCT** checks_condition_body;
+    size_t checks_condition_size;
+    struct AST_STRUCT** checks_do_body;
+
     struct AST_STRUCT* for_variable;
     struct AST_STRUCT* for_condition;
     struct AST_STRUCT* for_does_at_end;
@@ -66,6 +72,9 @@ typedef struct AST_STRUCT {
     struct AST_STRUCT* binop_left;
     struct AST_STRUCT* binop_right;
     int binop_op;
+
+    struct AST_STRUCT* dot_left;
+    struct AST_STRUCT* dot_right;
 
     struct AST_STRUCT* arrow_left;
     struct AST_STRUCT* arrow_right;

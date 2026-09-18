@@ -1,0 +1,92 @@
+# ui.iris -- a small widget layer built on top of the windowXXX() primitives. #
+# Requires the interpreter to have been built for Windows (_WIN32). #
+
+class Button {
+    "x" : 0,
+    "y" : 0,
+    "w" : 0,
+    "h" : 0,
+    "label" : "",
+    "bgR" : 200,
+    "bgG" : 200,
+    "bgB" : 200,
+    "wasPressed" : 0
+};
+
+class Rectangle {
+    "x" : 0,
+    "y" : 0,
+    "w" : 0,
+    "h" : 0,
+    "bgR" : 200,
+    "bgG" : 200,
+    "bgB" : 200
+};
+
+class Text {
+    "x" : 0,
+    "y" : 0,
+    "w" : 0,
+    "h" : 0,
+    "text" : ""
+};
+
+
+func uiButtonDraw(btn) {
+    windowDrawRect(btn."x", btn."y", btn."w", btn."h", btn."bgR", btn."bgG", btn."bgB");
+    windowDrawText(btn."x" + 5, btn."y" + 5, btn."label", 0, 0);
+};
+
+func uiRectangleDraw(rect) {
+    windowDrawRect(rect."x", rect."y", rect."w", rect."h", rect."bgR", rect."bgG", rect."bgB");
+};
+
+func uiTextDraw(text) {
+    var bjd = text."x" / 2;
+    var bjx = text."y" / 2;
+    windowDrawText(text."x" + bjd, text."y" + bjx, text."text", 0, 0);
+};
+
+# point-in-rect test against the current mouse position #
+func uiButtonHovered(btn) {
+    var mx = windowMouseX();
+    var my = windowMouseY();
+
+    if (mx, btn."x", 2) { return 0; };
+    if (mx, btn."x" + btn."w", 1) { return 0; };
+    if (my, btn."y", 2) { return 0; };
+    if (my, btn."y" + btn."h", 1) { return 0; };
+
+    return 1;
+};
+
+func uiRectangleHovered(rect) {
+    var mx = windowMouseX();
+    var my = windowMouseY();
+
+    if (mx < rect."x", 2) { return 0; };
+    if (mx > rect."x" + rect."w", 1) { return 0; };
+    if (my < rect."y", 2) { return 0; };
+    if (my < rect."y" + rect."h") { return 0; };
+
+    return 1;
+};
+
+# fires once on the frame the button transitions from not-pressed to pressed #
+# while hovered -- not "true every frame while held down". #
+func uiButtonClicked(btn) {
+    var hovered = uiButtonHovered(btn);
+    var down = windowMousePressed();
+    var clicked = 0;
+
+    if (hovered == 1) {
+        if (down == 1) {
+            if (btn."wasPressed" == 0) {
+                clicked = 1;
+            };
+        };
+    };
+
+    btn."wasPressed" = down;
+    return clicked;
+};
