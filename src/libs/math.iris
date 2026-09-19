@@ -1,19 +1,19 @@
 func abs(n) {
-    if (compare(n, 0, 2)) {
+    if (n < 0) {
         return 0 - n;
     };
     return n;
 };
 
 func max(a, b) {
-    if (compare(a, b, 1)) {
+    if (a > b) {
         return a;
     };
     return b;
 };
 
 func min(a, b) {
-    if (compare(a, b, 2)) {
+    if (a < b) {
         return a;
     };
     return b;
@@ -24,31 +24,13 @@ func clamp(value, low, high) {
 };
 
 # used while modulo system hasn't been developed yet #
-func mod(a, b) {
-    var remainder = a;
-    while (remainder >= b) {
-        remainder = remainder - b;
-    };
-    return remainder;
-};
 
 func isEven(n) {
-    return mod(n, 2) == 0;
+    return (n % 2) == 0;
 };
 
 func isOdd(n) {
-    return mod(n, 2) != 0;
-};
-
-# base raised to a non-negative integer exponent #
-func pow(base, exponent) {
-    var result = 1;
-    var i = 0;
-    while (i < exponent) {
-        result = result * base;
-        i = i + 1;
-    };
-    return result;
+    return (n % 2) != 0;
 };
 
 # Newton's method -- converges to float precision well within 25 iterations #
@@ -82,7 +64,7 @@ func gcd(a, b) {
     if (b == 0) {
         return a;
     };
-    return gcd(b, mod(a, b));
+    return gcd(b, a % b);
 };
 
 func lcm(a, b) {

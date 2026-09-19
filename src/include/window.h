@@ -4,6 +4,7 @@
 #include "visitor.h"
 
 AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args_size);
+AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int args_size);
 AST_T* builtin_function_window_should_close(Visitor_T* visitor, AST_T** args, int args_size);
 AST_T* builtin_function_window_clear(Visitor_T* visitor, AST_T** args, int args_size);
 AST_T* builtin_function_window_draw_rect(Visitor_T* visitor, AST_T** args, int args_size);

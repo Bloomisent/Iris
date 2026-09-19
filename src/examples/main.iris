@@ -73,8 +73,12 @@ print(dict_get_from_index(dict_e, "c"), "%n");
 print(dict_get_from_index(dict_e, "x"), "%n");
 print(dict_get_from_index(dict_e, "v"), "%n");
 
+var success = writeFile("lol.org", readFile("lol.org") + " hello world!", false);
+print(success, "%n");
+
 var goodbye = "n%!dlroW eybdooG";
 print(strrev(goodbye));
 
-var success = writeFile("lol.org", "hello world!", false);
-print(success);
+print("GC STATS: ", gcStats(), "%n");
+gc();
+print("GC STATS: ", gcStats(), "%n");

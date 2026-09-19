@@ -7,6 +7,11 @@
 #include "include/parser.h"
 #include "include/visitor.h"
 
+int current_line = 1;
+Scope_T* g_iris_gc_root_scope = NULL;
+
+char version[] = "v4.0.0";
+
 char* read_file_to_string(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
@@ -55,6 +60,11 @@ int main(int argc, char *argv[]) {
     };
 
     if (argv[1] != NULL) {
+        if (strcmp(argv[1], "--version") == 0){
+            printf("Iris Version: %s", version);
+            exit(101);
+            return 1;
+        };
         if (!ends_with(argv[1], ".iris")) {
             printf("Invalid file type, try a '.iris' file extension.\n");
             exit(101);
@@ -67,13 +77,20 @@ int main(int argc, char *argv[]) {
             Lexer_T* Lexer = Init_Lexer(contents);
             Parser_T* Parser = Init_Parser(Lexer);
             Parser->current_dir = get_directory(argv[1]);
+            g_iris_gc_root_scope = Parser->Scope;
 
             AST_T* root = Parser_Parse(Parser, Parser->Scope);
             Visitor_T* visitor = Init_Visitor();
-            AST_T* visit = Visitor_Visit(visitor, root);
-            Visitor_Clean(visitor, root);
+            AST_T* visit = NULL;
+            if (argc < 3 && strcmp(argv[2], "--grammar") != 0) {
+                visit = Visitor_Visit(visitor, root);
+                Visitor_Clean(visitor, root);
+            };
             free(visit);
-            free(contents);  // frees memory
+            free(Lexer);
+            free(Parser);
+            free(root);
+            free(contents);
         } else {
             printf("FILE IS NULL.\n");
         }

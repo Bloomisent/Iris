@@ -10,6 +10,8 @@
 #include "include/builtin.h"
 #include "include/token.h"
 
+extern int current_line;
+
 For_Tuple* get_for_data(Visitor_T* visitor, AST_T* node) {
     For_Tuple* Tuple = Init_For_Tuple();
     Tuple->condition_result = Visitor_Visit(visitor, node->for_condition);
@@ -28,6 +30,7 @@ While_Tuple* get_while_data(Visitor_T* visitor, AST_T* node) {
 Visitor_T* Init_Visitor(){
     Visitor_T* visitor = calloc(1, sizeof(struct VISITOR_STRUCT));
     visitor->returning = 0;
+    visitor->call_depth = 0;
     return visitor;
 };
 
@@ -74,7 +77,7 @@ AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node){
         case AST_NOOP: return node; break;
     };
 
-    printf("Tripped on statement, enum type is '%d'\n", node->type);
+    printf("Tripped on statement, enum type is '%d' (at line %d)\n", node->type, current_line);
     exit(1);
     return Init_AST(AST_NOOP);
 };
@@ -104,7 +107,7 @@ AST_T* VV_Variable(Visitor_T* visitor, AST_T* node) {
         if (vdef != (void*)0) {
             return Visitor_Visit(visitor, vdef->variable_definition_value);
         } else {
-            printf("Tripped on undefined variable '%s'\n", node->variable_name);
+            printf("Tripped on undefined variable '%s' (at line %d)\n", node->variable_name, current_line);
             exit(1);
         }
     }
@@ -146,14 +149,13 @@ AST_T* VV_If_Else(Visitor_T* visitor, AST_T* node) {
 };
 AST_T* VV_Checks(Visitor_T* visitor, AST_T* node) {
     AST_T* condition_var = Visitor_Visit(visitor, node->checks_base_var);
-    AST_T** conditionals = node->checks_condition_body;
 
     int is_truthy = 0;
 
     for (int i=0;i<node->checks_condition_size;i++) {
         AST_T* condition_to_check = Visitor_Visit(visitor, node->checks_condition_body[i]);
         if (condition_var->type != condition_to_check->type) {
-            printf("Tripped on checks, incompatible types\n");
+            printf("Tripped on checks, incompatible types (at line %d)\n", current_line);
             exit(1);
         }
         switch (condition_var->type) {
@@ -174,24 +176,22 @@ AST_T* VV_For(Visitor_T* visitor, AST_T* node) {
     char* loop_var_name;
 
     if (node->for_variable->type == AST_VARIABLE_DEFINITION) {
-        // for (var i = 0 : ...) -- declares a fresh loop variable
         AST_T* init_result = Visitor_Visit(visitor, node->for_variable);
         loop_var_name = init_result->variable_definition_variable_name;
     } else if (node->for_variable->type == AST_VARIABLE) {
-        // for (i : ...) -- reuses an already-declared variable
         loop_var_name = node->for_variable->variable_name;
         if (Scope_Get_Variable_Definition(node->scope, loop_var_name) == (void*)0) {
-            printf("Tripped on for loop, undefined variable '%s'\n", loop_var_name);
+            printf("Tripped on for loop, undefined variable '%s' (at line %d)\n", loop_var_name, current_line);
             exit(1);
         }
     } else {
-        printf("Tripped on for loop, loop variable must be a 'var' definition or an existing variable\n");
+        printf("Tripped on for loop, loop variable must be a 'var' definition or an existing variable (at line %d)\n", current_line);
         exit(1);
     }
 
     AST_T* end_do = Visitor_Visit(visitor, node->for_does_at_end);
     if (end_do->type != AST_STRING) {
-        printf("Tripped on for loop, unexpected argument types received\n");
+        printf("Tripped on for loop, unexpected argument types received (at line %d)\n", current_line);
         exit(1);
     }
 
@@ -201,7 +201,7 @@ AST_T* VV_For(Visitor_T* visitor, AST_T* node) {
     } else if (strcmp(end_do->string_value, "--") == 0) {
         minus = true;
     } else {
-        printf("Tripped on for loop, unknown step operator '%s'\n", end_do->string_value);
+        printf("Tripped on for loop, unknown step operator '%s' (at line %d)\n", end_do->string_value, current_line);
         exit(1);
     }
 
@@ -276,7 +276,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
 
     if (is_comparison) {
         if (left->type != right->type) {
-            printf("Tripped on comparison, incomparable types (%d, %d)\n", left->type, right->type);
+            printf("Tripped on comparison, incomparable types (%d, %d) (at line %d)\n", left->type, right->type, current_line);
             exit(1);
         }
 
@@ -292,7 +292,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                                           strcmp(left->string_value, right->string_value) == 0); break;
                 case AST_BOOL:   equal = (left->bool_value == right->bool_value); break;
                 default:
-                    printf("Tripped on comparison, unsupported type %d for equality\n", left->type);
+                    printf("Tripped on comparison, unsupported type %d for equality (at line %d)\n", left->type, current_line);
                     exit(1);
             }
             result->bool_value = (op == TOKEN_EQ) ? equal : !equal;
@@ -300,7 +300,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
         }
 
         if (left->type != AST_NUMBER) {
-            printf("Tripped on comparison, ordering operators require numbers (got type %d)\n", left->type);
+            printf("Tripped on comparison, ordering operators require numbers (got type %d), at line %d\n", left->type, current_line);
             exit(1);
         }
         switch (op) {
@@ -320,25 +320,35 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
             case TOKEN_MULTIPLY:   result->number_value = left->number_value * right->number_value; break;
             case TOKEN_DIVIDE:
                 if (right->number_value == 0.0f) {
-                    printf("Tripped on binary operation, division by zero\n");
+                    printf("Tripped on binary operation, division by zero, at line %d\n", current_line);
                     exit(1);
                 }
                 result->number_value = left->number_value / right->number_value;
                 break;
+            case TOKEN_ADD: left->number_value = left->number_value + right->number_value; break;
+            case TOKEN_SUB: left->number_value = left->number_value - right->number_value; break;
+            case TOKEN_MULT:  left->number_value = left->number_value * right->number_value; break;
+            case TOKEN_DIV:
+                if (right->number_value == 0.0f) {
+                    printf("Tripped on binary operation, division by zero, at line %d\n", current_line);
+                    exit(1);
+                }
+                left->number_value = left->number_value / right->number_value;
+                break;
             case TOKEN_MODULO:
                 if (right->number_value == 0.0f) {
-                    printf("Tripped on binary operation, modulo by zero\n");
+                    printf("Tripped on binary operation, modulo by zero, at line %d\n", current_line);
                     exit(1);
                 }
                 result->number_value = fmodf(left->number_value, right->number_value);
                 break;
             case TOKEN_EXPONENT: result->number_value = powf(left->number_value, right->number_value); break;
             default:
-                printf("Tripped on binary operation, unsupported operator %d\n", node->binop_op);
+                printf("Tripped on binary operation, unsupported operator %d, at line %d\n", node->binop_op, current_line);
                 exit(1);
         }
         return result;
-    } else if (left->type == AST_STRING && right->type == AST_STRING && node->binop_op == TOKEN_PLUS) {
+    } else if (left->type == AST_STRING && right->type == AST_STRING && (node->binop_op == TOKEN_PLUS || node->binop_op == TOKEN_ADD)) {
         AST_T* result = Init_AST(AST_STRING);
         char* combined = calloc(strlen(left->string_value) + strlen(right->string_value) + 1, sizeof(char));
         strcpy(combined, left->string_value);
@@ -346,7 +356,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
         result->string_value = combined;
         return result;
     } else {
-        printf("Tripped on binary operation, incompatible operand types (%d, %d)\n", left->type, right->type);
+        printf("Tripped on binary operation, incompatible operand types (%d, %d), at line %d\n", left->type, right->type, current_line);
         exit(1);
     }
 
@@ -357,7 +367,7 @@ AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
     AST_T* right = Visitor_Visit(visitor, node->dot_right);
 
     if (right->type != AST_STRING) {
-        printf("Tripped on dot operation, key must be a string (got type %d)\n", right->type);
+        printf("Tripped on dot operation, key must be a string (got type %d), at line %d\n", right->type, current_line);
         exit(1);
     }
 
@@ -368,12 +378,12 @@ AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
                 return Visitor_Visit(visitor, left->dictionary_definition_value[i]);
             }
         }
-        printf("Tripped on dot operation, key '%s' not found in dictionary\n", right->string_value);
+        printf("Tripped on dot operation, key '%s' not found in dictionary, at line %d\n", right->string_value, current_line);
         exit(1);
     } else if (left->type == AST_CLASS_DEFINITION) {
         if (strcmp(right->string_value, "init") == 0) {
             if (left->init_step == 0) {
-                printf("Tripped on dot operation, class '%s' has no init defined\n", left->class_definition_name);
+                printf("Tripped on dot operation, class '%s' has no init defined, at line %d\n", left->class_definition_name, current_line);
                 exit(1);
             }
             return Visitor_Visit(visitor, left->init_value);
@@ -384,10 +394,10 @@ AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
                 return Visitor_Visit(visitor, left->class_definition_value[i]);
             }
         }
-        printf("Tripped on dot operation, key '%s' not found in class\n", right->string_value);
+        printf("Tripped on dot operation, key '%s' not found in class, at line %d\n", right->string_value, current_line);
         exit(1);
     } else {
-        printf("Tripped on dot operation, invalid type accessed (%d)\n", left->type);
+        printf("Tripped on dot operation, invalid type accessed (%d), at line %d\n", left->type, current_line);
         exit(1);
     }
 
@@ -396,7 +406,7 @@ AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
 AST_T* VV_Class_Instantiation(Visitor_T* visitor, AST_T* node) {
     AST_T* template_def = Scope_Get_Class_Definition(node->scope, node->instance_class_name);
     if (template_def == (void*)0) {
-        printf("Tripped on class instantiation, undefined class '%s'\n", node->instance_class_name);
+        printf("Tripped on class instantiation, undefined class '%s', at line %d\n", node->instance_class_name, current_line);
         exit(1);
     }
 
@@ -425,15 +435,15 @@ AST_T* VV_Init_Call(Visitor_T* visitor, AST_T* node) {
     AST_T* instance = Visitor_Visit(visitor, node->init_call_instance);
 
     if (instance->type != AST_CLASS_DEFINITION) {
-        printf("Tripped on init call, target is not a class instance (type %d)\n", instance->type);
+        printf("Tripped on init call, target is not a class instance (type %d), at line %d\n", instance->type, current_line);
         exit(1);
     }
     if (!instance->init_step || instance->init_value == (void*)0) {
-        printf("Tripped on init call, class '%s' has no 'init' defined\n", instance->class_definition_name);
+        printf("Tripped on init call, class '%s' has no 'init' defined, at line %d\n", instance->class_definition_name, current_line);
         exit(1);
     }
     if (instance->init_args_size < 1) {
-        printf("Tripped on init call, 'init' must declare at least a 'self' parameter\n");
+        printf("Tripped on init call, 'init' must declare at least a 'self' parameter, at line %d\n", current_line);
         exit(1);
     }
 
@@ -442,9 +452,10 @@ AST_T* VV_Init_Call(Visitor_T* visitor, AST_T* node) {
 
     if (user_arg_count != declared_param_count - 1) {
         printf(
-            "Tripped on init call, expected %zu argument(s) but got %zu\n",
+            "Tripped on init call, expected %zu argument(s) but got %zu, at line %d\n",
             declared_param_count - 1,
-            user_arg_count
+            user_arg_count,
+            current_line
         );
         exit(1);
     }
@@ -491,7 +502,7 @@ AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node) {
         AST_T* variable = Scope_Get_Variable_Definition(target->scope, target->variable_name);
 
         if (variable == NULL){
-            printf("Tripped on assignment, unknown variable '%s'\n", target->variable_name);
+            printf("Tripped on assignment, unknown variable '%s', at line %d\n", target->variable_name, current_line);
             exit(1);
         };
 
@@ -503,7 +514,7 @@ AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node) {
     AST_T* key = Visitor_Visit(visitor, target->dot_right);
 
     if (key->type != AST_STRING) {
-        printf("Tripped on assignment, key must be a string (got type %d)\n", key->type);
+        printf("Tripped on assignment, key must be a string (got type %d), at line %d\n", key->type, current_line);
         exit(1);
     }
 
@@ -551,7 +562,7 @@ AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node) {
         left->class_definition_value[left->class_size - 1] = value;
         return value;
     } else {
-        printf("Tripped on assignment, invalid target type (%d) -- expected a dict or class instance\n", left->type);
+        printf("Tripped on assignment, invalid target type (%d) -- expected a dict or class instance, at line %d\n", left->type, current_line);
         exit(1);
     }
 
@@ -565,6 +576,10 @@ AST_T* VV_Function_Definition(Visitor_T* visitor, AST_T* node) {
 AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
     if (strcmp(node->function_call_name, "print") == 0) {
         return builtin_function_print(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "gc") == 0) { // garbage collector
+        return builtin_function_gc(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "gcStats") == 0) {
+        return builtin_function_gc_stats(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "type") == 0) {
         return builtin_function_type(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "dict_get_index") == 0) {
@@ -595,6 +610,8 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         return builtin_function_write_file(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowCreate") == 0) {
         return builtin_function_window_create(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowGetTime") == 0) {
+        return builtin_function_window_get_time(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowShouldClose") == 0) {
         return builtin_function_window_should_close(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowClear") == 0) {
@@ -617,12 +634,12 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         AST_T* fdef = Scope_Get_Function_Definition(node->scope, node->function_call_name);
 
         if (fdef == (void*)0) {
-            printf("Tripped on undefined method '%s'\n", node->function_call_name);
+            printf("Tripped on undefined method '%s', at line %d\n", node->function_call_name, current_line);
             exit(1);
         }
         if (node->function_call_arguments_size != fdef->function_definition_args_size) {
-            printf("Tripped on function call '%s', expected %zu args, got %zu\n",
-                   node->function_call_name, fdef->function_definition_args_size, node->function_call_arguments_size);
+            printf("Tripped on function call '%s', expected %zu args, got %zu (at line %d)\n",
+                   node->function_call_name, fdef->function_definition_args_size, node->function_call_arguments_size, current_line);
             exit(1);
         }
         Scope_T* call_scope = fdef->function_definition_body->scope;
@@ -662,7 +679,7 @@ AST_T* VV_Table(Visitor_T* visitor, AST_T* node) {
     if (tdef != (void*)0) {
         return tdef;
     } else {
-        printf("Tripped on undefined table '%s'\n", node->table_name);
+        printf("Tripped on undefined table '%s', at line %d\n", node->table_name, current_line);
         exit(1);
     }
     return node;
@@ -677,7 +694,7 @@ AST_T* VV_Dict(Visitor_T* visitor, AST_T* node) {
     if (ddef != (void*)0) {
         return ddef;
     } else {
-        printf("Tripped on undefined dictionary '%s'\n", node->dictionary_name);
+        printf("Tripped on undefined dictionary '%s', at line %d\n", node->dictionary_name, current_line);
         exit(1);
     }
     return node;
@@ -692,7 +709,7 @@ AST_T* VV_Class(Visitor_T* visitor, AST_T* node) {
     if (tdef != (void*)0) {
         return tdef;
     } else {
-        printf("Tripped on undefined class '%s'\n", node->class_name);
+        printf("Tripped on undefined class '%s', at line %d\n", node->class_name, current_line);
         exit(1);
     }
     return node;

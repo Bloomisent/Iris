@@ -5,6 +5,8 @@
 
 #include "include/lexer.h"
 
+extern int current_line;
+
 Lexer_T* Init_Lexer(const char* contents) {
 
     Lexer_T* lexer = calloc(1, sizeof(Lexer_T));
@@ -50,6 +52,9 @@ char* Lexer_Get_Current_Char_As_String(Lexer_T* lexer) {
 }
 
 Token_T* Lexer_Advance_With_Token(Lexer_T* lexer, Token_T* token) {
+    token->position = lexer->i;
+    token->line = current_line;
+    token->col = lexer->i - (current_line-1);
     Lexer_Advance(lexer);
     return token;
 }
@@ -72,6 +77,10 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
 
         char ch = lexer->c;
 
+        if (ch == '\r'){
+            current_line += 1;
+        };
+
         if (ch == '\\') {
             Lexer_Advance(lexer);
             if(lexer->c == '\0') {
@@ -79,7 +88,10 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
                 fprintf(
                     stderr,
                     "Lexer error: "
-                    "unterminated escape sequence\n"
+                    "unterminated escape sequence"
+                    "at line %d, col %zu\n",
+                    current_line,
+                    lexer->i - (current_line-1)
                 );
                 exit(EXIT_FAILURE);
             }
@@ -129,7 +141,10 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
         fprintf(
             stderr,
             "Lexer error: "
-            "unterminated string\n"
+            "unterminated string"
+            "at line %d, col %zu\n",
+            current_line,
+            lexer->i-(current_line-1)
         );
         exit(EXIT_FAILURE);
     }
@@ -161,7 +176,10 @@ Token_T* Lexer_Collect_Number(Lexer_T* lexer) {
                 fprintf(
                     stderr,
                     "Lexer error: "
-                    "invalid number\n"
+                    "invalid number"
+                    "at line %d, col %zu\n",
+                    current_line,
+                    lexer->i-(current_line-1)
                 );
                 exit(EXIT_FAILURE);
             }
@@ -225,6 +243,10 @@ Token_T* Lexer_Collect_Id(Lexer_T* lexer) {
 
 Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
     while (lexer->c != '\0') {
+        if (lexer->c == '\r'){
+            current_line += 1;
+        };
+
         if (isspace((unsigned char)lexer->c)) {
             Lexer_Skip_WhiteSpace(lexer);
 
@@ -247,12 +269,15 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
         if (lexer->c == '#') {
             Lexer_Advance(lexer);
             while (lexer->c != '#' && lexer->c != '\0') {
+                if (lexer->c == '\r'){
+                    current_line += 1;
+                };
                 Lexer_Advance(lexer);
             };
             if (lexer->c == '#') {
                 Lexer_Advance(lexer);
             } else {
-                fprintf(stderr, "Lexer Error: unterminated comment at position %zu\n", lexer->i);
+                fprintf(stderr, "Lexer Error: unterminated comment at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
                 exit(EXIT_FAILURE);
             };
             continue;
@@ -342,6 +367,10 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                 );
 
             case '+':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_ADD, "+="));
+                };
                 return Lexer_Advance_With_Token(
                     lexer,
                     Init_Token(
@@ -351,6 +380,10 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                 );
 
             case '-':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_SUB, "-="));
+                };
                 return Lexer_Advance_With_Token(
                     lexer,
                     Init_Token(
@@ -360,6 +393,10 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                 );
 
             case '*':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_MULT, "*="));
+                };
                 return Lexer_Advance_With_Token(
                     lexer,
                     Init_Token(
@@ -369,6 +406,10 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                 );
 
             case '/':
+                if (Lexer_Peek(lexer) == '=') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_DIV, "/="));
+                };
                 return Lexer_Advance_With_Token(
                     lexer,
                     Init_Token(
@@ -412,7 +453,7 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                     Lexer_Advance(lexer);
                     return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_NEQ, "!="));
                 }
-                fprintf(stderr, "Lexer error: '!' must be followed by '=' at position %zu\n", lexer->i);
+                fprintf(stderr, "Lexer error: '!' must be followed by '=' at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
                 exit(EXIT_FAILURE);
             case '>':
                 if (Lexer_Peek(lexer) == '=') {
@@ -447,9 +488,11 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
             default:
                 fprintf(
                     stderr,
-                    "Lexer error: unexpected character '%c' at position %zu\n",
+                    "Lexer error: unexpected character '%c' at position %zu, line %d, col %zu\n",
                     lexer->c,
-                    lexer->i
+                    lexer->i,
+                    current_line,
+                    lexer->i - (current_line-1)
                 );
                 exit(EXIT_FAILURE);
         }

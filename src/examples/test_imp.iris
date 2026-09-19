@@ -1,0 +1,25 @@
+include "../libs/test.iris";
+
+print("before loop: ", gcStats(), "%n");
+
+var i = 0;
+while (i < 5000) {
+    var throwaway = i * 2;
+    i = i + 1;
+};
+
+print("after loop, before gc: ", gcStats(), "%n");
+
+var reclaimed = gc();
+print("reclaimed: ", reclaimed, "%n");
+print("after gc: ", gcStats(), "%n");
+
+assertTrue(reclaimed > 4000, "gc reclaimed a large number of shadowed bindings");
+
+func recurse(n) {
+    if (n <= 0) { return 0; };
+    return recurse(n - 1) + 1;
+};
+assertEqual(recurse(100), 100, "recursion still works and gc changes didn't break it");
+
+testSummary();

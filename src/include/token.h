@@ -24,6 +24,10 @@ typedef enum {
     TOKEN_EQ,
     TOKEN_NEQ,//comparison
     TOKEN_DOT,
+    TOKEN_ADD,
+    TOKEN_SUB,
+    TOKEN_MULT,
+    TOKEN_DIV,
     TOKEN_NUMBER,
     TOKEN_EOF,
     TOKEN_COLON,
@@ -34,6 +38,9 @@ typedef enum {
 typedef struct TOKEN_STRUCT {
     TokenType type;
     char* value;
+    size_t position;
+    int line;
+    int col;
 } Token_T;
 
 Token_T* Init_Token(int type, const char* value);

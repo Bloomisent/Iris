@@ -9,6 +9,7 @@
 #include "include/scope.h"
 
 extern char* read_file_to_string(const char *filename);
+extern int current_line;
 
 char* get_directory(const char* path){
     const char* last_slash = strrchr(path, '/');
@@ -90,7 +91,7 @@ void Parser_Eat(Parser_T* Parser, int token_type){
         Parser->previous_token = Parser->current_token;
         Parser->current_token = Lexer_Get_Next_Token(Parser->lexer);
     } else {
-        printf("Tripped on unknown token '%s' with type %d", Parser->current_token->value, Parser->current_token->type);
+        printf("Tripped on unknown token '%s' with type %d, at line %d", Parser->current_token->value, Parser->current_token->type, current_line);
         exit(1);
     };
 };
@@ -100,9 +101,10 @@ AST_T* Parser_Parse(Parser_T* Parser, Scope_T* Scope){ // main entry, return AST
 
     if (Parser->current_token->type != TOKEN_EOF) {
         printf(
-            "Tripped on trailing content, unexpected token '%s' with type %d after the last recognized statement\n",
+            "Tripped on trailing content, unexpected token '%s' with type %d after the last recognized statement (at line %d)\n",
             Parser->current_token->value,
-            Parser->current_token->type
+            Parser->current_token->type,
+            current_line
         );
         exit(1);
     }
@@ -116,9 +118,9 @@ AST_T* Parser_Parse_Statement(Parser_T* Parser, Scope_T* Scope){
 
             if (Parser->current_token->type == TOKEN_EQUALS) {
                 if (expr->type != AST_DOT && expr->type != AST_VARIABLE) {
-                    printf("Tripped on assignment, left-hand side must be a member access (obj > \"key\") or a variable\n");
+                    printf("Tripped on assignment, left-hand side must be a member access (obj > \"key\") or a variable (at line %d)\n", current_line);
                     exit(1);
-                }
+                };
 
                 Parser_Eat(Parser, TOKEN_EQUALS);
                 AST_T* value = Parser_Parse_Expr(Parser, Scope);
@@ -192,7 +194,7 @@ AST_T* Parser_Parse_Expr(Parser_T* Parser, Scope_T* Scope){
 AST_T* Parser_Parse_Additive(Parser_T* Parser, Scope_T* Scope){
     AST_T* node = Parser_Parse_Term(Parser, Scope);
 
-    while (Parser->current_token->type == TOKEN_PLUS || Parser->current_token->type == TOKEN_MINUS) {
+    while (Parser->current_token->type == TOKEN_PLUS || Parser->current_token->type == TOKEN_MINUS || Parser->current_token->type == TOKEN_ADD || Parser->current_token->type == TOKEN_SUB) {
         int op = Parser->current_token->type;
         Parser_Eat(Parser, op);
 
@@ -220,7 +222,7 @@ AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope){
         case TOKEN_NUMBER: return Parser_Parse_Number(Parser, Scope); break;
         case TOKEN_ID: return Parser_Parse_Id(Parser, Scope); break;
         default:
-            printf("Tripped on factor, unexpected token type %d\n", Parser->current_token->type);
+            printf("Tripped on factor, unexpected token type %d, at line %d\n", Parser->current_token->type, current_line);
             exit(1);
             break;
     };
@@ -277,7 +279,7 @@ static AST_T* Parser_Parse_Dot_Chain(Parser_T* Parser, Scope_T* Scope) {
 AST_T* Parser_Parse_Term(Parser_T* Parser, Scope_T* Scope){
     AST_T* node = Parser_Parse_Dot_Chain(Parser, Scope);
 
-    while (Parser->current_token->type == TOKEN_MULTIPLY || Parser->current_token->type == TOKEN_DIVIDE) {
+    while (Parser->current_token->type == TOKEN_MULTIPLY || Parser->current_token->type == TOKEN_DIVIDE || Parser->current_token->type == TOKEN_MULT || Parser->current_token->type == TOKEN_DIV || Parser->current_token->type == TOKEN_EXPONENT || Parser->current_token->type == TOKEN_MODULO) {
         int op = Parser->current_token->type;
         Parser_Eat(Parser, op);
 
@@ -365,7 +367,7 @@ AST_T* Parser_Parse_Table_Definition(Parser_T* Parser, Scope_T* Scope) {
         AST_T* table = Parser_Parse_Id(Parser, Scope);
 
         if (table->type != AST_TABLE) {
-            printf("Tripped on table assignment, not a table/invalid type\n");
+            printf("Tripped on table assignment, not a table/invalid type (at line %d)\n", current_line);
             exit(1);
         };
 
@@ -835,7 +837,7 @@ AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
 
     char* contents = read_file_to_string(path);
     if (contents == (void*)0) {
-        printf("Tripped on include, could not read file '%s'\n", path);
+        printf("Tripped on include, could not read file '%s' (at line %d)\n", path, current_line);
         exit(1);
     }
 
@@ -852,7 +854,7 @@ AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
     AST_T* included_statements = Parser_Parse_Statements(Parser, Scope);
 
     if (Parser->current_token->type != TOKEN_EOF) {
-        printf("Tripped on include, unexpected trailing token in included file '%s'\n", path);
+        printf("Tripped on include, unexpected trailing token in included file '%s', at line %d\n", path, current_line);
         exit(1);
     }
 

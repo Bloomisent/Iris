@@ -4,6 +4,7 @@
 
 typedef struct VISITOR_STRUCT {
     int returning;
+    int call_depth;
 } Visitor_T;
 
 typedef struct FOR_TUPLE_STRUCT {

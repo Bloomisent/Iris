@@ -11,6 +11,9 @@ Token_T* Init_Token(int type,const char* value) {
 
     size_t n = value ? strlen(value) : 0;
     t->value = malloc(n + 1);
+    t->position = 0;
+    t->line = 0;
+    t->col = 0;
 
     if (!t->value) exit(EXIT_FAILURE);
 
