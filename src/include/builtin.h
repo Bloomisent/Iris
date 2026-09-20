@@ -57,12 +57,12 @@ AST_T* builtin_function_print(Visitor_T* visitor, AST_T** args, int args_size){
                 break;
             };
             case AST_BOOL: printf("%s", visited_ast->bool_value ? "true" : "false"); break;
-            case AST_NUMBER : printf("%f ", visited_ast->number_value); break;
+            case AST_NUMBER : printf("%g ", visited_ast->number_value); break;
             case AST_CLASS : printf("%s ", visited_ast->class_name); break;
             case AST_CLASS_INSTANTIATION :
                 //printf("{");
                 //AST_T* class_def = Scope_Get_Class_Definition(visited_ast->scope, visited_ast->instance_class_name);
-                printf(visited_ast->instance_class_name);
+                printf("%s ", visited_ast->instance_class_name);
                 break;
                 /*for (size_t j = 0; j < class_def->class_size; j++) {
                     AST_T* elem = Visitor_Visit(visitor, class_def->class_definition_value[j]);
@@ -84,8 +84,12 @@ AST_T* builtin_function_print(Visitor_T* visitor, AST_T** args, int args_size){
                     AST_T* elem = Visitor_Visit(visitor, visited_ast->table_definition_value[j]);
                     switch (elem->type) {
                         case AST_STRING : printf(" %s", elem->string_value); break;
-                        case AST_NUMBER : printf(" %f", elem->number_value); break;
+                        case AST_NUMBER : printf(" %g", elem->number_value); break;
                         case AST_BOOL: printf(" %s", elem->bool_value ? "true" : "false"); break;
+                        case AST_CLASS : printf(" %s ", elem->class_name); break;
+                        case AST_CLASS_INSTANTIATION :
+                            printf(" %s", elem->instance_class_name);
+                            break;
                         case AST_TABLE_DEFINITION : printf(" "); AST_T** new_args = calloc(1, sizeof(struct AST_STRUCT*)); new_args[0] = elem; builtin_function_print(visitor, new_args, 1); break;
                         default : printf(" %p", elem); break;
                     }
