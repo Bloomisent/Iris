@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Iris | The Interpreted Language</title>
+    </head>
+    <body>
+        <h1>Iris</h1>
+        
+        <p><strong>Iris</strong> is a small interpreted programming language written in C.</p>
+        <p>Download Iris <a href="bloomisent.xyz/download">here</a> today!</p>
+        
+        <blockquote>
+          <p><strong>Current version:</strong> v3.0.2<br>
+          <strong>File extension:</strong> <code>.iris</code><br>
+          <strong>License:</strong> Apache License 2.0</p>
+        </blockquote>
+        
+        <p>Iris uses a lexer → parser → AST → visitor architecture. Source code is tokenized, parsed into an abstract syntax tree, and then executed by the visitor.</p>
+        
+        <hr>
+        
+        <h2>Getting Started</h2>
+        
+        <p>An Iris program is stored in a file ending in <code>.iris</code>.</p>
+        
+        <p>For example:</p>
+        
+        <pre><code class="language-iris">print("Hello, world!");
+        </code></pre>
+        
+        <p>Run an Iris program by passing its path to the interpreter:</p>
+        
+        <pre><code class="language-text">iris.exe program.iris
+        </code></pre>
+        
+        <p>The executable also supports:</p>
+        
+        <pre><code class="language-text">iris.exe --version
+        </code></pre>
+        
+        <p>which prints the current interpreter version.</p>
+        
+        <p>Iris currently does not include a Makefile or CMake configuration in the repository root, so building the interpreter requires compiling the C source files together with the required libraries.</p>
+        
+        <hr>
+        
+        <h1>Basic Syntax</h1>
+        
+        <h2>Statements</h2>
+        
+        <p>Statements are separated using semicolons:</p>
+        
+        <pre><code class="language-iris">print("Hello");
+        print("World");
+        </code></pre>
+        
+        <p>A semicolon can also terminate a single statement:</p>
+        
+        <pre><code class="language-iris">var x = 10;
+        </code></pre>
+        
+        <p>Iris parses a program as a compound collection of statements.</p>
+        
+        <hr>
+        
+        <h1>Variables</h1>
+        
+        <p>Variables are declared with <code>var</code>:</p>
+        
+        <pre><code class="language-iris">var x = 10;
+        var name = "Iris";
+        var enabled = true;
+        </code></pre>
+        
+        <p>The value can be a number, string, boolean, table, dictionary, class, function result, or another expression.</p>
+        
+        <p>Variables can be reassigned:</p>
+        
+        <pre><code class="language-iris">var x = 10;
+        
+        x = 20;
+        </code></pre>
+        
+        <p>The compound-assignment operators are also supported:</p>
+        
+        <pre><code class="language-iris">x += 5;
+        x -= 2;
+        x *= 3;
+        x /= 2;
+        </code></pre>
+        
+        <p>The parser represents these as assignments and binary operations.</p>
+        
+        <hr>
+        
+        <h1>Data Types</h1>
+        
+        <p>Iris currently supports the following principal runtime values:</p>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Number</td>
+              <td><code>123</code></td>
+            </tr>
+            <tr>
+              <td>String</td>
+              <td><code>"hello"</code></td>
+            </tr>
+            <tr>
+              <td>Boolean</td>
+              <td><code>true</code> / <code>false</code></td>
+            </tr>
+            <tr>
+              <td>Table</td>
+              <td><code>[1, 2, 3]</code></td>
+            </tr>
+            <tr>
+              <td>Dictionary</td>
+              <td><code>["name": "Iris"]</code></td>
+            </tr>
+            <tr>
+              <td>Class</td>
+              <td><code>MyClass</code></td>
+            </tr>
+            <tr>
+              <td>Class instance</td>
+              <td><code>MyClass instance</code></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <p>Boolean literals are implemented as the identifiers <code>true</code> and <code>false</code>.</p>
+        
+        <hr>
+        
+        <h1>Numbers</h1>
+        
+        <p>Numbers are parsed as floating-point values internally.</p>
+        
+        <pre><code class="language-iris">var x = 10;
+        var y = 2.5;
+        
+        print(x + y);
+        </code></pre>
+        
+        <p>Supported arithmetic operators include:</p>
+        
+        <pre><code class="language-text">+   addition
+        -   subtraction
+        *   multiplication
+        %   modulo
+        ^   exponentiation
+        </code></pre>
+        
+        <p>Comparisons include:</p>
+        
+        <pre><code class="language-text">&gt;
+        &lt;
+        &gt;=
+        &lt;=
+        ==
+        !=
+        </code></pre>
+        
+        <p>These operators are implemented by the expression parser and visitor.</p>
+        
+        <hr>
+        
+        <h1>Strings</h1>
+        
+        <p>Strings use double quotes:</p>
+        
+        <pre><code class="language-iris">var message = "Hello";
+        print(message);
+        </code></pre>
+        
+        <p>Strings support concatenation with <code>+</code>:</p>
+        
+        <pre><code class="language-iris">var first = "Hello ";
+        var second = "world";
+        
+        print(first + second);
+        </code></pre>
+        
+        <p>The built-in <code>print</code> function also interprets <code>%n</code> inside strings as a newline:</p>
+        
+        <pre><code class="language-iris">print("Hello%nWorld");
+        </code></pre>
+        
+        <p>Strings can contain escaped characters such as:</p>
+        
+        <pre><code class="language-text">\n
+        \t
+        \"
+        \\
+        </code></pre>
+        
+        <p>The lexer handles these escape sequences when collecting strings.</p>
+        
+        <hr>
+        
+        <h1>Comments</h1>
+        
+        <p>Comments are enclosed between <code>#</code> characters:</p>
+        
+        <pre><code class="language-iris"># This is a comment #
+        </code></pre>
+        
+        <p>Comments may span multiple lines.</p>
+        
+        <p>The lexer skips everything between the opening and closing <code>#</code>.</p>
+        
+        <hr>
+        
+        <h1>Functions</h1>
+        
+        <p>Functions are declared using <code>func</code>:</p>
+        
+        <pre><code class="language-iris">func add(a, b) {
+            return a + b;
+        }
+        </code></pre>
+        
+        <p>They are called using parentheses:</p>
+        
+        <pre><code class="language-iris">var result = add(10, 20);
+        print(result);
+        </code></pre>
+        
+        <p>Functions can have zero or more parameters:</p>
+        
+        <pre><code class="language-iris">func hello() {
+            print("Hello");
+        }
+        </code></pre>
+        
+        <pre><code class="language-iris">func greet(name) {
+            print("Hello " + name);
+        }
+        </code></pre>
+        
+        <p>The interpreter checks the number of arguments passed to a function against the number declared by the function.</p>
+        
+        <hr>
+        
+        <h1>Return</h1>
+        
+        <p>Functions return values with <code>return</code>:</p>
+        
+        <pre><code class="language-iris">func square(x) {
+            return x * x;
+        }
+        
+        var result = square(5);
+        </code></pre>
+        
+        <p>A <code>return</code> causes the visitor to stop executing the current compound statement.</p>
+        
+        <hr>
+        
+        <h1>Conditions</h1>
+        
+        <h2><code>if</code></h2>
+        
+        <pre><code class="language-iris">if (x &gt; 10) {
+            print("Large");
+        }
+        </code></pre>
+        
+        <h2><code>ifelse</code></h2>
+        
+        <p>Iris uses <code>ifelse</code> for an if/else statement:</p>
+        
+        <pre><code class="language-iris">ifelse (x &gt; 10) {
+            print("Large");
+        } else {
+            print("Small");
+        }
+        </code></pre>
+        
+        <p>The parser explicitly recognizes both <code>if</code> and <code>ifelse</code>.</p>
+        
+        <p>Conditions consider numbers, strings, and booleans when determining truthiness.</p>
+        
+        <hr>
+        
+        <h1>For Loops</h1>
+        
+        <p>The Iris <code>for</code> syntax contains three expressions separated by colons:</p>
+        
+        <pre><code class="language-iris">for (var i = 1: i &lt;= 10: "++") {
+            print(i);
+        }
+        </code></pre>
+        
+        <p>The third expression specifies the step:</p>
+        
+        <pre><code class="language-text">"++"
+        </code></pre>
+        
+        <p>increments the loop variable.</p>
+        
+        <pre><code class="language-text">"--"
+        </code></pre>
+        
+        <p>decrements it.</p>
+        
+        <p>For example:</p>
+        
+        <pre><code class="language-iris">for (var i = 10: i &gt; 0: "--") {
+            print(i);
+        }
+        </code></pre>
+        
+        <p>The loop parser expects:</p>
+        
+        <pre><code class="language-text">for (initialisation : condition : step)
+        </code></pre>
+        
+        <p>and the visitor specifically recognizes <code>"++"</code> and <code>"--"</code>.</p>
+        
+        <hr>
+        
+        <h1>While Loops</h1>
+        
+        <p>While loops use:</p>
+        
+        <pre><code class="language-iris">while (condition) {
+            ...
+        }
+        </code></pre>
+        
+        <p>Example:</p>
+        
+        <pre><code class="language-iris">var x = 0;
+        
+        while (x &lt; 10) {
+            print(x);
+            x += 1;
+        }
+        </code></pre>
+        
+        <p>The condition is reevaluated for every iteration.</p>
+        
+        <hr>
+        
+        <h1>Tables</h1>
+        
+        <p>Tables are ordered collections.</p>
+        
+        <p>Define a table with square brackets:</p>
+        
+        <pre><code class="language-iris">table numbers = [1, 2, 3, 4, 5];
+        </code></pre>
+        
+        <p>A table can contain expressions:</p>
+        
+        <pre><code class="language-iris">table numbers = [1 + 1, 2 + 2, 3 + 3];
+        </code></pre>
+        
+        <p>Tables can also be copied into another table definition:</p>
+        
+        <pre><code class="language-iris">table numbers2 = numbers;
+        </code></pre>
+        
+        <p>The parser records table names separately so that later references can be recognized as table values.</p>
+        
+        <h2>Table functions</h2>
+        
+        <p>Table operations are exposed through built-in functions:</p>
+        
+        <pre><code class="language-iris">table_get_index(table, value)
+        table_get_from_index(table, index)
+        table_set_index(table, index, value)
+        </code></pre>
+        
+        <p><code>table_get_from_index</code> uses <strong>1-based indexing</strong>.</p>
+        
+        <p>For example:</p>
+        
+        <pre><code class="language-iris">var value = table_get_from_index(numbers, 1);
+        </code></pre>
+        
+        <p>returns the first element.</p>
+        
+        <p><code>table_get_index</code> searches for a value and returns its index.</p>
+        
+        <hr>
+        
+        <h1>Dictionaries</h1>
+        
+        <p>Dictionaries contain string keys and values.</p>
+        
+        <pre><code class="language-iris">dict person = [
+            "name": "John",
+            "age": 20
+        ];
+        </code></pre>
+        
+        <p>Dictionary entries use:</p>
+        
+        <pre><code class="language-text">"key": value
+        </code></pre>
+        
+        <p>and entries are separated by commas.</p>
+        
+        <p>Dictionary access and modification are provided through built-ins:</p>
+        
+        <pre><code class="language-iris">dict_get_from_index(dictionary, key)
+        dict_get_index(dictionary, value)
+        dict_set_index(dictionary, key, value)
+        </code></pre>
+        
+        <p>For example:</p>
+        
+        <pre><code class="language-iris">var name = dict_get_from_index(person, "name");
+        </code></pre>
+        
+        <hr>
+        
+        <h1>Member Access</h1>
+        
+        <p>Dictionary and class members can be accessed using a dot followed by a string:</p>
+        
+        <pre><code class="language-iris">person."name"
+        </code></pre>
+        
+        <p>For example:</p>
+        
+        <pre><code class="language-iris">var name = person."name";
+        </code></pre>
+        
+        <p>Members can also be assigned:</p>
+        
+        <pre><code class="language-iris">person."name" = "Alice";
+        </code></pre>
+        
+        <p>The parser represents this operation as an <code>AST_DOT</code> node.</p>
+        
+        <hr>
+        
+        <h1>Classes</h1>
+        
+        <p>Classes are declared with <code>class</code>:</p>
+        
+        <pre><code class="language-iris">class Player {
+            "name": "Player",
+            "score": 0
+        }
+        </code></pre>
+        
+        <p>Class members use string keys.</p>
+        
+        <p>A class can also contain a special <code>init</code> member:</p>
+        
+        <pre><code class="language-iris">class Player {
+            "name": "Player",
+            "init": func(self, name) {
+                self."name" = name;
+            }
+        }
+        </code></pre>
+        
+        <p>The <code>init</code> member is parsed specially as a constructor-like function. Its first parameter is conventionally <code>self</code>.</p>
+        
+        <hr>
+        
+        <h1>Class Instances</h1>
+        
+        <p>A class instance can be declared using:</p>
+        
+        <pre><code class="language-iris">Player player;
+        </code></pre>
+        
+        <p>The parser treats the class name followed by another identifier as a class-instantiation expression.</p>
+        
+        <p>Class instances can then be used with member access:</p>
+        
+        <pre><code class="language-iris">player."name"
+        </code></pre>
+        
+        <hr>
+        
+        <h1>Checks</h1>
+        
+        <p>Iris provides a <code>checks</code> construct for comparing a value against multiple conditions.</p>
+        
+        <p>Its structure is:</p>
+        
+        <pre><code class="language-iris">checks(value) {
+            (condition): {
+                ...
+            },
+            (condition): {
+                ...
+            }
+        }
+        </code></pre>
+        
+        <p>Example:</p>
+        
+        <pre><code class="language-iris">checks(x) {
+            (1): {
+                print("one");
+            },
+            (2): {
+                print("two");
+            }
+        }
+        </code></pre>
+        
+        <p>Each condition is compared with the value supplied to <code>checks</code>.</p>
+        
+        <hr>
+        
+        <h1>Includes</h1>
+        
+        <p>Other <code>.iris</code> files can be included using:</p>
+        
+        <pre><code class="language-iris">include "library.iris";
+        </code></pre>
+        
+        <p>The included path is resolved relative to the directory of the current Iris file.</p>
+        
+        <p>Iris keeps track of included paths to prevent the same file from being included repeatedly, including circular include situations.</p>
+        
+        <hr>
+        
+        <h1>Built-in Functions</h1>
+        
+        <p>Iris provides a collection of built-in functions.</p>
+        
+        <h2>General</h2>
+        
+        <h3><code>print</code></h3>
+        
+        <p>Prints values:</p>
+        
+        <pre><code class="language-iris">print("Hello");
+        print(123);
+        print(true);
+        </code></pre>
+        
+        <p>Strings containing <code>%n</code> can be used for newlines.</p>
+        
+        <h3><code>type</code></h3>
+        
+        <p>Returns a string describing the type:</p>
+        
+        <pre><code class="language-iris">type(value)
+        </code></pre>
+        
+        <p>Possible returned type names include:</p>
+        
+        <pre><code class="language-text">STRING
+        NUMBER
+        TABLE
+        CLASS
+        BOOL
+        </code></pre>
+        
+        <h3><code>toNumber</code></h3>
+        
+        <p>Converts a string to a number:</p>
+        
+        <pre><code class="language-iris">toNumber("123")
+        </code></pre>
+        
+        <h3><code>toString</code></h3>
+        
+        <p>Converts a number to a string:</p>
+        
+        <pre><code class="language-iris">toString(123)
+        </code></pre>
+        
+        <hr>
+        
+        <h2>String Functions</h2>
+        
+        <h3><code>charAt</code></h3>
+        
+        <p>Returns a character at a 1-based index:</p>
+        
+        <pre><code class="language-iris">charAt("Hello", 1)
+        </code></pre>
+        
+        <h3><code>stredit</code></h3>
+        
+        <p>Changes a character in a string:</p>
+        
+        <pre><code class="language-iris">stredit(string, index, value)
+        </code></pre>
+        
+        <p>The replacement value is expected to contain one character.</p>
+        
+        <h3><code>ForEach</code></h3>
+        
+        <p>Calls a named Iris function for each character in a string:</p>
+        
+        <pre><code class="language-iris">ForEach("Hello", "myFunction")
+        </code></pre>
+        
+        <hr>
+        
+        <h2>File Functions</h2>
+        
+        <h3><code>readFile</code></h3>
+        
+        <p>Reads a file into a string:</p>
+        
+        <pre><code class="language-iris">var contents = readFile("file.txt");
+        </code></pre>
+        
+        <h3><code>writeFile</code></h3>
+        
+        <p>Writes data to a file:</p>
+        
+        <pre><code class="language-iris">writeFile("file.txt", "Hello", false);
+        </code></pre>
+        
+        <p>The third argument determines whether formatted output is used.</p>
+        
+        <hr>
+        
+        <h1>Garbage Collection</h1>
+        
+        <p>Iris exposes garbage-collection functions:</p>
+        
+        <pre><code class="language-iris">gc();
+        gcStats();
+        </code></pre>
+        
+        <p><code>gc()</code> is intended to reclaim unused variable and function definitions from the global scope.</p>
+        
+        <p>The implementation also tracks function-call depth and prevents collection while a function call is in progress.</p>
+        
+        <hr>
+        
+        <h1>Windows Graphics</h1>
+        
+        <p>When Iris is compiled for Windows, it provides a small native windowing API.</p>
+        
+        <h2>Create a window</h2>
+        
+        <pre><code class="language-iris">windowCreate("My Iris Window", 800, 600);
+        </code></pre>
+        
+        <h2>Clear the window</h2>
+        
+        <pre><code class="language-iris">windowClear(0, 0, 0);
+        </code></pre>
+        
+        <p>The arguments are RGB values.</p>
+        
+        <h2>Draw a rectangle</h2>
+        
+        <pre><code class="language-iris">windowDrawRect(x, y, width, height, r, g, b);
+        </code></pre>
+        
+        <h2>Draw text</h2>
+        
+        <pre><code class="language-iris">windowDrawText(x, y, text, r, g);
+        </code></pre>
+        
+        <h2>Present the back buffer</h2>
+        
+        <pre><code class="language-iris">windowPresent();
+        </code></pre>
+        
+        <h2>Input and timing</h2>
+        
+        <pre><code class="language-iris">windowGetTime();
+        windowShouldClose();
+        windowMouseX();
+        windowMouseY();
+        windowMousePressed();
+        </code></pre>
+        
+        <h2>Close</h2>
+        
+        <pre><code class="language-iris">windowClose();
+        </code></pre>
+        
+        <p>These functions are implemented using the Windows API. When Iris is compiled on a non-Windows platform, the window functions report that windowing is only supported under <code>_WIN32</code>.</p>
+        
+        <hr>
+        
+        <h1>Expression Precedence</h1>
+        
+        <p>Iris parses expressions in several levels:</p>
+        
+        <ol>
+          <li>Parenthesized expressions</li>
+          <li>Strings, numbers and identifiers</li>
+          <li>Member access / function calls</li>
+          <li><code>*</code>, <code>/</code>, <code>%</code>, <code>^</code></li>
+          <li><code>+</code>, <code>-</code></li>
+          <li>Comparisons:
+            <ul>
+              <li><code>&gt;</code></li>
+              <li><code>&lt;</code></li>
+              <li><code>&gt;=</code></li>
+              <li><code>&lt;=</code></li>
+              <li><code>==</code></li>
+              <li><code>!=</code></li>
+            </ul>
+          </li>
+        </ol>
+        
+        <p>This hierarchy is implemented directly by the parser's expression functions.</p>
+        
+        <hr>
+        
+        <h1>Program Structure</h1>
+        
+        <p>A typical Iris program can combine all of these features:</p>
+        
+        <pre><code class="language-iris">var name = "Iris";
+        var counter = 0;
+        
+        func greet(person) {
+            print("Hello " + person);
+        }
+        
+        greet(name);
+        
+        for (var i = 1: i &lt;= 5: "++") {
+            print(i);
+        }
+        
+        if (counter == 0) {
+            print("Counter is zero");
+        }
+        </code></pre>
+        
+        <p>The interpreter processes the file by:</p>
+        
+        <pre><code class="language-text">.iris source
+            ↓
+        Lexer
+            ↓
+        Tokens
+            ↓
+        Parser
+            ↓
+        AST
+            ↓
+        Visitor
+            ↓
+        Execution
+        </code></pre>
+        
+        <p>The lexer produces tokens containing a type, value, source position, line and column. The parser converts those tokens into AST nodes, and the visitor evaluates the resulting AST.</p>
+        
+        <hr>
+        
+        <h1>Source Layout</h1>
+        
+        <p>The repository is organized around the interpreter implementation.</p>
+        
+        <p>Important components include:</p>
+        
+        <pre><code class="language-text">src/
+        ├── main.c
+        ├── lexer.c
+        ├── parser.c
+        ├── visitor.c
+        ├── AST.c
+        ├── token.c
+        ├── window.c
+        └── include/
+            ├── AST.h
+            ├── builtin.h
+            ├── lexer.h
+            ├── parser.h
+            ├── scope.h
+            ├── token.h
+            ├── visitor.h
+            └── window.h
+        </code></pre>
+        
+        <p><code>main.c</code> initializes the lexer and parser, parses the program, and then sends the resulting AST to the visitor for execution.</p>
+        
+        <hr>
+        
+        <h1>Error Messages</h1>
+        
+        <p>Iris reports errors using messages such as:</p>
+        
+        <pre><code class="language-text">Tripped on undefined variable 'x' ...
+        Tripped on division by zero ...
+        Tripped on undefined method 'foo' ...
+        </code></pre>
+        
+        <p>Parser errors generally use the line stored on the current token.</p>
+        
+        <p>Runtime errors produced by the visitor and built-ins use the interpreter's global <code>current_line</code> value. Consequently, runtime error locations can differ from the actual source location of the AST node that caused the error.</p>
+        
+        <hr>
+        
+        <h1>Quick Reference</h1>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Syntax</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Variable</td>
+              <td><code>var x = value;</code></td>
+            </tr>
+            <tr>
+              <td>Assignment</td>
+              <td><code>x = value;</code></td>
+            </tr>
+            <tr>
+              <td>Add assignment</td>
+              <td><code>x += value;</code></td>
+            </tr>
+            <tr>
+              <td>Subtract assignment</td>
+              <td><code>x -= value;</code></td>
+            </tr>
+            <tr>
+              <td>Multiply assignment</td>
+              <td><code>x *= value;</code></td>
+            </tr>
+            <tr>
+              <td>Divide assignment</td>
+              <td><code>x /= value;</code></td>
+            </tr>
+            <tr>
+              <td>Function</td>
+              <td><code>func name(args) { ... }</code></td>
+            </tr>
+            <tr>
+              <td>Return</td>
+              <td><code>return value;</code></td>
+            </tr>
+            <tr>
+              <td>If</td>
+              <td><code>if (condition) { ... }</code></td>
+            </tr>
+            <tr>
+              <td>If/else</td>
+              <td><code>ifelse (condition) { ... } else { ... }</code></td>
+            </tr>
+            <tr>
+              <td>For</td>
+              <td><code>for (start: condition: "++") { ... }</code></td>
+            </tr>
+            <tr>
+              <td>While</td>
+              <td><code>while (condition) { ... }</code></td>
+            </tr>
+            <tr>
+              <td>Table</td>
+              <td><code>table x = [a, b, c];</code></td>
+            </tr>
+            <tr>
+              <td>Dictionary</td>
+              <td><code>dict x = ["key": value];</code></td>
+            </tr>
+            <tr>
+              <td>Class</td>
+              <td><code>class X { ... }</code></td>
+            </tr>
+            <tr>
+              <td>Instance</td>
+              <td><code>X instance;</code></td>
+            </tr>
+            <tr>
+              <td>Member access</td>
+              <td><code>object."key"</code></td>
+            </tr>
+            <tr>
+              <td>Include</td>
+              <td><code>include "file.iris";</code></td>
+            </tr>
+            <tr>
+              <td>Comment</td>
+              <td><code># comment #</code></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <hr>
+        
+        <h1>Example Program</h1>
+        
+        <pre><code class="language-iris"># Simple Iris program #
+        
+        var name = "World";
+        var count = 5;
+        
+        func greet(person) {
+            print("Hello " + person);
+        }
+        
+        greet(name);
+        
+        for (var i = 1: i &lt;= count: "++") {
+            print(i);
+        }
+        
+        if (count &gt; 0) {
+            print("Done");
+        }
+        </code></pre>
+        
+        <p>This demonstrates variables, strings, functions, function calls, a <code>for</code> loop, comparisons, and an <code>if</code> statement.</p>
+        </body>
+</html>
