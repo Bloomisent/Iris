@@ -127,10 +127,6 @@ Supported arithmetic operators include:
 +   addition
 -   subtraction
 *   multiplication
-+=   self-addition
--=   self-subtraction
-*=   self-multiplication
-/=   self-division
 %   modulo
 ^   exponentiation
 ```
