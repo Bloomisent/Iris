@@ -314,6 +314,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
 
     if (left->type == AST_NUMBER && right->type == AST_NUMBER) {
         AST_T* result = Init_AST(AST_NUMBER);
+        result->number_value = 0;
         switch (node->binop_op) {
             case TOKEN_PLUS:  result->number_value = left->number_value + right->number_value; break;
             case TOKEN_MINUS: result->number_value = left->number_value - right->number_value; break;
@@ -325,15 +326,15 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                 }
                 result->number_value = left->number_value / right->number_value;
                 break;
-            case TOKEN_ADD: left->number_value = left->number_value + right->number_value; break;
-            case TOKEN_SUB: left->number_value = left->number_value - right->number_value; break;
-            case TOKEN_MULT:  left->number_value = left->number_value * right->number_value; break;
+            case TOKEN_ADD:  result->number_value = left->number_value + right->number_value; break;
+            case TOKEN_SUB: result->number_value = left->number_value - right->number_value; break;
+            case TOKEN_MULT:   result->number_value = left->number_value * right->number_value; break;
             case TOKEN_DIV:
                 if (right->number_value == 0.0f) {
                     printf("Tripped on binary operation, division by zero, at line %d\n", current_line);
                     exit(1);
                 }
-                left->number_value = left->number_value / right->number_value;
+                result->number_value = left->number_value / right->number_value;
                 break;
             case TOKEN_MODULO:
                 if (right->number_value == 0.0f) {

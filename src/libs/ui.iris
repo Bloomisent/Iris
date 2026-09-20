@@ -52,10 +52,10 @@ func uiButtonHovered(btn) {
     var mx = windowMouseX();
     var my = windowMouseY();
 
-    if (mx, btn."x", 2) { return 0; };
-    if (mx, btn."x" + btn."w", 1) { return 0; };
-    if (my, btn."y", 2) { return 0; };
-    if (my, btn."y" + btn."h", 1) { return 0; };
+    if (mx < btn."x") { return 0; };
+    if (mx > btn."x" + btn."w") { return 0; };
+    if (my < btn."y") { return 0; };
+    if (my > btn."y" + btn."h") { return 0; };
 
     return 1;
 };
@@ -64,9 +64,9 @@ func uiRectangleHovered(rect) {
     var mx = windowMouseX();
     var my = windowMouseY();
 
-    if (mx < rect."x", 2) { return 0; };
-    if (mx > rect."x" + rect."w", 1) { return 0; };
-    if (my < rect."y", 2) { return 0; };
+    if (mx < rect."x") { return 0; };
+    if (mx > rect."x" + rect."w") { return 0; };
+    if (my < rect."y") { return 0; };
     if (my < rect."y" + rect."h") { return 0; };
 
     return 1;

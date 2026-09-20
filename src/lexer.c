@@ -6,6 +6,7 @@
 #include "include/lexer.h"
 
 extern int current_line;
+extern int current_col;
 
 Lexer_T* Init_Lexer(const char* contents) {
 
@@ -54,7 +55,7 @@ char* Lexer_Get_Current_Char_As_String(Lexer_T* lexer) {
 Token_T* Lexer_Advance_With_Token(Lexer_T* lexer, Token_T* token) {
     token->position = lexer->i;
     token->line = current_line;
-    token->col = lexer->i - (current_line-1);
+    token->col = current_col;
     Lexer_Advance(lexer);
     return token;
 }
@@ -77,8 +78,18 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
 
         char ch = lexer->c;
 
-        if (ch == '\r'){
-            current_line += 1;
+        if (lexer->c == '\n'){
+            while (lexer->c == '\n') {
+                current_line += 1;
+                current_col = 1;
+                Lexer_Advance(lexer);
+            };
+        } else if (lexer->c == '\r'){
+            while (lexer->c == '\r') {
+                current_line += 1;
+                current_col = 1;
+                Lexer_Advance(lexer);
+            };
         };
 
         if (ch == '\\') {
@@ -170,8 +181,8 @@ Token_T* Lexer_Collect_Number(Lexer_T* lexer) {
     if (!value) exit(EXIT_FAILURE);
 
     while (isdigit((unsigned char)lexer->c) || lexer->c == '.') {
-        if(lexer->c == '.') {
-            if(decimal_found) {
+        if (lexer->c == '.') {
+            if (decimal_found) {
                 free(value);
                 fprintf(
                     stderr,
@@ -243,9 +254,25 @@ Token_T* Lexer_Collect_Id(Lexer_T* lexer) {
 
 Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
     while (lexer->c != '\0') {
-        if (lexer->c == '\r'){
-            current_line += 1;
+        if (lexer->c == '\n'){
+            while (lexer->c == '\n') {
+                current_line += 1;
+                current_col = 1;
+                Lexer_Advance(lexer);
+            };
+        } else if (lexer->c == '\r'){
+            while (lexer->c == '\r') {
+                current_line += 1;
+                current_col = 1;
+                Lexer_Advance(lexer);
+            };
         };
+
+        if (lexer->c == '\t') {
+            current_col += 4 - ((current_col - 1) % 4);
+        } else {
+            current_col++;
+        }
 
         if (isspace((unsigned char)lexer->c)) {
             Lexer_Skip_WhiteSpace(lexer);
@@ -269,8 +296,18 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
         if (lexer->c == '#') {
             Lexer_Advance(lexer);
             while (lexer->c != '#' && lexer->c != '\0') {
-                if (lexer->c == '\r'){
-                    current_line += 1;
+                if (lexer->c == '\n'){
+                    while (lexer->c == '\n') {
+                        current_line += 1;
+                        current_col = 1;
+                        Lexer_Advance(lexer);
+                    };
+                } else if (lexer->c == '\r'){
+                    while (lexer->c == '\r') {
+                        current_line += 1;
+                        current_col = 1;
+                        Lexer_Advance(lexer);
+                    };
                 };
                 Lexer_Advance(lexer);
             };

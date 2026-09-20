@@ -8,6 +8,7 @@
 #include "include/visitor.h"
 
 int current_line = 1;
+int current_col = 1;
 Scope_T* g_iris_gc_root_scope = NULL;
 
 char version[] = "v4.0.0";
@@ -82,14 +83,13 @@ int main(int argc, char *argv[]) {
             AST_T* root = Parser_Parse(Parser, Parser->Scope);
             Visitor_T* visitor = Init_Visitor();
             AST_T* visit = NULL;
-            if (argc < 3 && strcmp(argv[2], "--grammar") != 0) {
+            if (argc < 3 || strcmp(argv[2], "--grammar") != 0) {
                 visit = Visitor_Visit(visitor, root);
                 Visitor_Clean(visitor, root);
             };
             free(visit);
             free(Lexer);
             free(Parser);
-            free(root);
             free(contents);
         } else {
             printf("FILE IS NULL.\n");

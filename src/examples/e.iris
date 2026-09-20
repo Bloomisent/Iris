@@ -25,13 +25,13 @@ b."bgB" = 50;
 b."label" = "Hello World!";
 
 Rectangle b_border;
-bg."x" = 150;
-bg."y" = 120;
-bg."w" = 100;
-bg."h" = 40;
-bg."bgR" = 50;
-bg."bgG" = 50;
-bg."bgB" = 50;
+b_border."x" = 150;
+b_border."y" = 120;
+b_border."w" = 100;
+b_border."h" = 40;
+b_border."bgR" = 50;
+b_border."bgG" = 50;
+b_border."bgB" = 50;
 
 Text txt;
 txt."w" = 40;

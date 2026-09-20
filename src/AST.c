@@ -3,7 +3,7 @@
 
 #include "include/AST.h"
 
-char* Roman_Strdup( const char* s) {
+char* Iris_Strdup( const char* s) {
     if (!s) return NULL;
     size_t n = strlen(s);
     char* p = malloc(n + 1);

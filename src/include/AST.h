@@ -34,6 +34,8 @@ typedef enum {
 
 typedef struct AST_STRUCT {
 
+    int current_line;
+
     AST_Type type;
     struct SCOPE_STRUCT* scope;
 
@@ -133,4 +135,4 @@ typedef struct AST_STRUCT {
 } AST_T;
 
 AST_T* Init_AST(int type);
-char* Roman_Strdup(const char* s);
+char* Iris_Strdup(const char* s);

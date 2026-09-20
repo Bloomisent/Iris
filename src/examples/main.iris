@@ -73,8 +73,15 @@ print(dict_get_from_index(dict_e, "c"), "%n");
 print(dict_get_from_index(dict_e, "x"), "%n");
 print(dict_get_from_index(dict_e, "v"), "%n");
 
-var success = writeFile("lol.org", readFile("lol.org") + " hello world!", false);
+var success = writeFile("lol.org", readFile("lol.org") + "hello world!\n", true);
 print(success, "%n");
+
+var x = 1;
+
+var e = x;
+e += 1;
+print("E = ", e, "%n");
+print("X = ", x, "%n");
 
 var goodbye = "n%!dlroW eybdooG";
 print(strrev(goodbye));

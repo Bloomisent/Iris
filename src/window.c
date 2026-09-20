@@ -7,6 +7,8 @@
 #include "include/AST.h"
 #include "include/visitor.h"
 
+extern int current_line;
+
 #ifdef _WIN32
 
 #define WIN32_LEAN_AND_MEAN
