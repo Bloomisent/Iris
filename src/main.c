@@ -11,7 +11,7 @@ int current_line = 1;
 int current_col = 1;
 Scope_T* g_iris_gc_root_scope = NULL;
 
-char version[] = "v4.0.0";
+char version[] = "v3.0.2";
 
 char* read_file_to_string(const char *filename) {
     FILE *file = fopen(filename, "rb");
