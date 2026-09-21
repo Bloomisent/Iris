@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /libs/
+
+Sitemap: https://bloomisent.xyz
