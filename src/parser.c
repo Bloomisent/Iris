@@ -250,6 +250,30 @@ AST_T* Parser_Parse_Statements(Parser_T* Parser, Scope_T* Scope){
 };
 
 AST_T* Parser_Parse_Expr(Parser_T* Parser, Scope_T* Scope){
+    AST_T* node = Parser_Parse_Logic_And(Parser, Scope);
+    while (Parser->current_token->type == TOKEN_OR) {
+        Parser_Eat(Parser, TOKEN_OR);
+        AST_T* right = Parser_Parse_Logic_And(Parser, Scope);
+        AST_T* binop = Init_AST(AST_BINOP);
+        binop->binop_left = node; binop->binop_op = TOKEN_OR; binop->binop_right = right;
+        binop->scope = Scope;
+        node = binop;
+    };
+    return node;
+};
+AST_T* Parser_Parse_Logic_And(Parser_T* Parser, Scope_T* Scope){
+    AST_T* node = Parser_Parse_Comparison(Parser, Scope);
+    while (Parser->current_token->type == TOKEN_AND) {
+        Parser_Eat(Parser, TOKEN_AND);
+        AST_T* right = Parser_Parse_Comparison(Parser, Scope);
+        AST_T* binop = Init_AST(AST_BINOP);
+        binop->binop_left = node; binop->binop_op = TOKEN_AND; binop->binop_right = right;
+        binop->scope = Scope;
+        node = binop;
+    };
+    return node;
+};
+AST_T* Parser_Parse_Comparison(Parser_T* Parser, Scope_T* Scope){   // this is your OLD Parser_Parse_Expr body, renamed, untouched otherwise
     AST_T* node = Parser_Parse_Additive(Parser, Scope);
 
     while (Parser->current_token->type == TOKEN_GT ||
@@ -293,6 +317,29 @@ AST_T* Parser_Parse_Additive(Parser_T* Parser, Scope_T* Scope){
     return node;
 };
 AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope){
+    if (Parser->current_token->type == TOKEN_NOT) {
+        Parser_Eat(Parser, TOKEN_NOT);
+        AST_T* operand = Parser_Parse_Factor(Parser, Scope);
+
+        AST_T* node = Init_AST(AST_UNARY_NOT);
+        node->unary_operand = operand;
+        node->scope = Scope;
+        return node;
+    };
+    if (Parser->current_token->type == TOKEN_MINUS) {
+        Parser_Eat(Parser, TOKEN_MINUS);
+
+        AST_T* operand = Parser_Parse_Factor(Parser, Scope);
+        AST_T* zero = Init_AST(AST_NUMBER);
+        zero->number_value = 0;
+
+        AST_T* binop = Init_AST(AST_BINOP);
+        binop->binop_left = zero;
+        binop->binop_op = TOKEN_MINUS;
+        binop->binop_right = operand;
+        binop->scope = Scope;
+        return binop;
+    };
     switch (Parser->current_token->type){
         case TOKEN_LPAREN: {
             Parser_Eat(Parser, TOKEN_LPAREN);
@@ -783,7 +830,17 @@ AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope) {
 
     Parser_Eat(Parser, TOKEN_RCURLY); // if compound
 
+    if (Parser->current_token->type != TOKEN_ID) {
+        printf("Missing 'else' in ifelse statement (at line %d)\n", Parser->current_token->line);
+        exit(1);
+    };
+    if (strcmp(Parser->current_token->value, "else")) {
+        printf("Else not found in ifelse statement (at line %d)\n", Parser->current_token->line);
+        exit(1);
+    };
+
     Parser_Eat(Parser, TOKEN_ID); // else
+
     Parser_Eat(Parser, TOKEN_LCURLY);
 
     ast->if_else_body = Parser_Parse_Statements(Parser, Scope);

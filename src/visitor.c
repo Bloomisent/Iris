@@ -12,6 +12,19 @@
 
 extern int current_line;
 
+static int is_truthy(AST_T* var){
+    int equal = 0;
+    switch (var->type) {
+        case AST_NUMBER: equal = (var->number_value != 0); break;
+        case AST_STRING: equal = (var->string_value != (void*)0 && var->string_value[0] != '\0'); break;
+        case AST_BOOL: equal = (var->bool_value != 0); break;
+        default:
+            printf("Tripped on comparison, unsupported type %d for equality (at line %d)\n", var->type, current_line);
+            exit(1);
+    };
+    return equal;
+};
+
 For_Tuple* get_for_data(Visitor_T* visitor, AST_T* node) {
     For_Tuple* Tuple = Init_For_Tuple();
     Tuple->condition_result = Visitor_Visit(visitor, node->for_condition);
@@ -267,10 +280,24 @@ AST_T* VV_While(Visitor_T* visitor, AST_T* node) {
     return last_var;
 };
 AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
+    int op = node->binop_op;
+
+    if (op == TOKEN_AND || op == TOKEN_OR) {
+        AST_T* left = Visitor_Visit(visitor, node->binop_left);
+        int lv = is_truthy(left);
+
+        AST_T* result = Init_AST(AST_BOOL);
+        if (op == TOKEN_AND && !lv) { result->bool_value = 0; return result; }
+        if (op == TOKEN_OR  &&  lv) { result->bool_value = 1; return result; }
+
+        AST_T* right = Visitor_Visit(visitor, node->binop_right);
+        result->bool_value = is_truthy(right);
+        return result;
+    }
+
     AST_T* left = Visitor_Visit(visitor, node->binop_left);
     AST_T* right = Visitor_Visit(visitor, node->binop_right);
 
-    int op = node->binop_op;
     int is_comparison = (op == TOKEN_GT || op == TOKEN_LT || op == TOKEN_GTE ||
                          op == TOKEN_LTE || op == TOKEN_EQ || op == TOKEN_NEQ);
 
@@ -282,7 +309,6 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
 
         AST_T* result = Init_AST(AST_BOOL);
 
-        /* == and != work on any comparable type; ordering is numbers only. */
         if (op == TOKEN_EQ || op == TOKEN_NEQ) {
             int equal = 0;
             switch (left->type) {
@@ -362,6 +388,12 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
     }
 
     return Init_AST(AST_NOOP);
+};
+AST_T* VV_Unary_Not(Visitor_T* visitor, AST_T* node) {
+    AST_T* operand = Visitor_Visit(visitor, node->unary_operand);
+    AST_T* result = Init_AST(AST_BOOL);
+    result->bool_value = !is_truthy(operand);
+    return result;
 };
 AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
     AST_T* left = Visitor_Visit(visitor, node->dot_left);

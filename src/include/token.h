@@ -22,7 +22,10 @@ typedef enum {
     TOKEN_GTE,
     TOKEN_LTE,
     TOKEN_EQ,
-    TOKEN_NEQ,//comparison
+    TOKEN_NEQ,
+    TOKEN_AND,
+    TOKEN_OR,
+    TOKEN_NOT, //comparison
     TOKEN_DOT,
     TOKEN_ADD,
     TOKEN_SUB,

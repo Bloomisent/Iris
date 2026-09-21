@@ -80,8 +80,33 @@ var x = 1;
 
 var e = x;
 e += 1;
+e *= 2;
+e /= 1;
+e -= 0.5;
 print("E = ", e, "%n");
 print("X = ", x, "%n");
+
+var five = "five";
+five += ", four";
+
+print(five, "%n");
+
+var v = 1;
+
+ifelse (v == 1){
+    print("hello%n");
+} else {
+    print("hi%n");
+};
+
+var b = 2;
+var f = 33;
+
+ifelse (b == 2 && f == 33){
+    print("a shining iris.%n");
+} else {
+    print("yo wsp.%n");
+};
 
 var goodbye = "n%!dlroW eybdooG";
 print(strrev(goodbye));

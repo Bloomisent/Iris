@@ -14,6 +14,7 @@ typedef enum {
     AST_FOR,
     AST_WHILE,
     AST_BINOP,
+    AST_UNARY_NOT,
     AST_DOT,
     AST_VARIABLE,
     AST_TABLE,
@@ -74,6 +75,8 @@ typedef struct AST_STRUCT {
     struct AST_STRUCT* binop_left;
     struct AST_STRUCT* binop_right;
     int binop_op;
+
+    struct AST_STRUCT* unary_operand;
 
     struct AST_STRUCT* dot_left;
     struct AST_STRUCT* dot_right;

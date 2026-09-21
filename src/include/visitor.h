@@ -35,6 +35,7 @@ AST_T* VV_Checks(Visitor_T* visitor, AST_T* node);
 AST_T* VV_For(Visitor_T* visitor, AST_T* node);
 AST_T* VV_While(Visitor_T* visitor, AST_T* node);
 AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node);
+AST_T* VV_Unary_Not(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Arrow(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Dot(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Return(Visitor_T* visitor, AST_T* node);

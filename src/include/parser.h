@@ -38,6 +38,8 @@ AST_T* Parser_Parse(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Statement(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Statements(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Expr(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Logic_And(Parser_T* Parser, Scope_T* Scope);
+AST_T* Parser_Parse_Comparison(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Additive(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Term(Parser_T* Parser, Scope_T* Scope);

@@ -454,6 +454,21 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                         "/"
                     )
                 );
+            case '&':
+                if (Lexer_Peek(lexer) == '&') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_AND, "&&"));
+                };
+                fprintf(stderr, "Lexer error: '&' must be followed by another '&' at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
+                exit(EXIT_FAILURE);
+
+            case '|':
+                if (Lexer_Peek(lexer) == '|') {
+                    Lexer_Advance(lexer);
+                    return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_OR, "||"));
+                };
+                fprintf(stderr, "Lexer error: '|' must be followed by another '|' at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
+                exit(EXIT_FAILURE);
 
             case '%':
                 return Lexer_Advance_With_Token(
@@ -490,8 +505,13 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                     Lexer_Advance(lexer);
                     return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_NEQ, "!="));
                 }
-                fprintf(stderr, "Lexer error: '!' must be followed by '=' at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
-                exit(EXIT_FAILURE);
+                return Lexer_Advance_With_Token(
+                    lexer,
+                    Init_Token(
+                        TOKEN_NOT,
+                        "!"
+                    )
+                );
             case '>':
                 if (Lexer_Peek(lexer) == '=') {
                     Lexer_Advance(lexer);
