@@ -436,17 +436,17 @@ dict_set_index(dictionary, key, value)</code></pre>
 
       <h1 id="member-access">Member Access</h1>
 
-      <p>Dictionary and class members can be accessed using a dot followed by a string:</p>
+      <p>Dictionary and class members can be accessed using a dot followed by an id:</p>
 
-      <pre><code class="language-iris">person."name"</code></pre>
+      <pre><code class="language-iris">person.name</code></pre>
 
       <p>For example:</p>
 
-      <pre><code class="language-iris">var name = person."name";</code></pre>
+      <pre><code class="language-iris">var name = person.name;</code></pre>
 
       <p>Members can also be assigned:</p>
 
-      <pre><code class="language-iris">person."name" = "Alice";</code></pre>
+      <pre><code class="language-iris">person.name = "Alice";</code></pre>
 
       <p>The parser represents this operation as an <code>AST_DOT</code> node.</p>
 
@@ -468,7 +468,7 @@ dict_set_index(dictionary, key, value)</code></pre>
       <pre><code class="language-iris">class Player {
     "name": "Player",
     "init": func(self, name) {
-        self."name" = name;
+        self.name = name;
     }
 }</code></pre>
 
@@ -486,7 +486,7 @@ dict_set_index(dictionary, key, value)</code></pre>
 
       <p>Class instances can then be used with member access:</p>
 
-      <pre><code class="language-iris">player."name"</code></pre>
+      <pre><code class="language-iris">player.name</code></pre>
 
       <hr>
 
