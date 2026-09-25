@@ -9,9 +9,11 @@
 
 int current_line = 1;
 int current_col = 1;
-Scope_T* g_iris_gc_root_scope = NULL;
 
-char version[] = "v3.0.3";
+Scope_T* g_iris_gc_root_scope = NULL;
+char* g_iris_library_dir;
+
+char version[] = "v3.0.4";
 
 char* read_file_to_string(const char *filename) {
     FILE *file = fopen(filename, "rb");
@@ -54,6 +56,8 @@ bool ends_with(const char *str, const char *suffix) {
 }
 
 int main(int argc, char *argv[]) {
+
+    g_iris_library_dir = join_path(get_directory(argv[0]), "src\\libs\\");
 
     if (argc < 2) {
         printf("You did not input a path.\n");

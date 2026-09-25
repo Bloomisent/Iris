@@ -86,6 +86,7 @@ AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node){
         case AST_DICTIONARY: return VV_Dict(visitor, node); break;
         case AST_CLASS: return VV_Class(visitor, node); break;
         case AST_FUNCTION_CALL: return VV_Function_Call(visitor, node); break;
+        case AST_UNARY_NOT: return VV_Unary_Not(visitor, node); break;
         case AST_COMPOUND: return VV_Compound(visitor, node); break;
         case AST_NOOP: return node; break;
     };
@@ -641,6 +642,10 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         return builtin_function_read_file(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "writeFile") == 0) {
         return builtin_function_write_file(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "input") == 0) {
+        return builtin_function_input(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "floor") == 0) {
+        return builtin_function_floor(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowCreate") == 0) {
         return builtin_function_window_create(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowGetTime") == 0) {
@@ -659,8 +664,14 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         return builtin_function_window_mouse_x(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowMouseY") == 0) {
         return builtin_function_window_mouse_y(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowGetWidth") == 0) {
+        return builtin_function_window_width(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowGetHeight") == 0) {
+        return builtin_function_window_height(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowMousePressed") == 0) {
         return builtin_function_window_mouse_pressed(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowKeyPressed") == 0) {
+        return builtin_function_window_key_pressed(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowClose") == 0) {
         return builtin_function_window_close(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else {

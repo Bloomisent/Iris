@@ -30,7 +30,34 @@ extern int current_line;
 static LRESULT CALLBACK Iris_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     switch (msg) {
         case WM_CLOSE:
+        case WM_SIZE: {
+            int new_width = LOWORD(lparam);
+            int new_height = HIWORD(lparam);
+
+            if (new_width > 0 && new_height > 0) {
+                g_iris_window_width = new_width;
+                g_iris_window_height = new_height;
+
+                if (g_iris_backbuffer_bitmap) {
+                    SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_old_bitmap);
+                    DeleteObject(g_iris_backbuffer_bitmap);
+                };
+
+                HDC screen_dc = GetDC(hwnd);
+                g_iris_backbuffer_bitmap = CreateCompatibleBitmap(screen_dc, g_iris_window_width, g_iris_window_height);
+                g_iris_backbuffer_old_bitmap = (HBITMAP)SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_bitmap);
+                ReleaseDC(hwnd, screen_dc);
+            }
+            return 0;
+        }
         case WM_DESTROY:
+            if (g_iris_backbuffer_bitmap) {
+                SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_old_bitmap);
+                DeleteObject(g_iris_backbuffer_bitmap);
+            }
+            if (g_iris_backbuffer_dc) {
+                DeleteDC(g_iris_backbuffer_dc);
+            }
             g_iris_should_close = 1;
             PostQuitMessage(0);
             return 0;
@@ -57,12 +84,39 @@ static AST_T* require_number(Visitor_T* visitor, AST_T* arg, const char* fn, int
     return v;
 }
 
+static AST_T* require_string(Visitor_T* visitor, AST_T* arg, const char* fn, int arg_index) {
+    AST_T* v = Visitor_Visit(visitor, arg);
+    if (v->type != AST_STRING) {
+        printf("Tripped on function '%s', argument %d expects a string but did not receive one (at line %d)\n", fn, arg_index, current_line);
+        exit(1);
+    }
+    return v;
+}
+
+AST_T* builtin_function_window_width(Visitor_T* visitor, AST_T** args, int args_size) {
+    RECT rect;
+    int width = g_iris_window_width;
+
+    AST_T* ast = Init_AST(AST_NUMBER);
+    ast->number_value = (float)width;
+    return ast;
+}
+
+AST_T* builtin_function_window_height(Visitor_T* visitor, AST_T** args, int args_size) {
+    RECT rect;
+    int height = g_iris_window_height;
+
+    AST_T* ast = Init_AST(AST_NUMBER);
+    ast->number_value = (float)height;
+    return ast;
+}
+
 AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 3) {
         printf("Tripped on function 'windowCreate', expected 3 arguments (title, width, height), got %d (at line %d)\n", args_size, current_line);
         exit(1);
     }
-    AST_T* title = Visitor_Visit(visitor, args[0]);
+    AST_T* title = require_string(visitor, args[0], "windowCreate", 1);
     if (title->type != AST_STRING) {
         printf("Tripped on function 'windowCreate', argument 1 expects a string but did not receive one (at line %d)\n", current_line);
         exit(1);
@@ -97,7 +151,7 @@ AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args
     );
 
     if (!g_iris_window) {
-        printf("Tripped on function 'windowCreate', CreateWindowExA failed (at line %d)\n", current_line);
+        printf("Failed on function 'windowCreate', CreateWindowExA failed (at line %d)\n", current_line);
         exit(1);
     }
 
@@ -129,6 +183,19 @@ AST_T* builtin_function_window_should_close(Visitor_T* visitor, AST_T** args, in
     AST_T* result = Init_AST(AST_NUMBER);
     result->number_value = g_iris_should_close ? 1.0f : 0.0f;
     return result;
+};
+
+AST_T* builtin_function_window_wait(Visitor_T* visitor, AST_T** args, int args_size) {
+    if (args_size != 1) {
+        printf("Tripped on function 'windowWait', expected 1 argument, got %d (at line %d)\n", args_size, current_line);
+        exit(1);
+    }
+
+    AST_T* time = require_number(visitor, args[0], "windowWait", 1);
+
+    Sleep((int)time->number_value);
+
+    return Init_AST(AST_NOOP);
 };
 
 AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int args_size) {
@@ -190,8 +257,8 @@ AST_T* builtin_function_window_draw_rect(Visitor_T* visitor, AST_T** args, int a
 };
 
 AST_T* builtin_function_window_draw_text(Visitor_T* visitor, AST_T** args, int args_size) {
-    if (args_size != 5) {
-        printf("Tripped on function 'windowDrawText', expected 5 arguments (x, y, text, r, g, b), got %d (at line %d)\n", args_size, current_line);
+    if (args_size != 6) {
+        printf("Tripped on function 'windowDrawText', expected 6 arguments (x, y, text, r, g, b), got %d (at line %d)\n", args_size, current_line);
         exit(1);
     }
     AST_T* x = require_number(visitor, args[0], "windowDrawText", 1);
@@ -203,8 +270,9 @@ AST_T* builtin_function_window_draw_text(Visitor_T* visitor, AST_T** args, int a
     }
     AST_T* r = require_number(visitor, args[3], "windowDrawText", 4);
     AST_T* g = require_number(visitor, args[4], "windowDrawText", 5);
+    AST_T* b = require_number(visitor, args[5], "windowDrawText", 6);
 
-    SetTextColor(g_iris_backbuffer_dc, RGB((int)r->number_value, (int)g->number_value, 0));
+    SetTextColor(g_iris_backbuffer_dc, RGB((int)r->number_value, (int)g->number_value, (int)b->number_value));
     SetBkMode(g_iris_backbuffer_dc, TRANSPARENT);
     TextOutA(g_iris_backbuffer_dc, (int)x->number_value, (int)y->number_value, text->string_value, (int)strlen(text->string_value));
 
@@ -237,6 +305,27 @@ AST_T* builtin_function_window_mouse_y(Visitor_T* visitor, AST_T** args, int arg
 AST_T* builtin_function_window_mouse_pressed(Visitor_T* visitor, AST_T** args, int args_size) {
     AST_T* result = Init_AST(AST_NUMBER);
     result->number_value = g_iris_mouse_down ? 1.0f : 0.0f;
+    return result;
+};
+
+AST_T* builtin_function_window_key_pressed(Visitor_T* visitor, AST_T** args, int args_size){
+    if (args_size != 1) {
+        printf("Tripped on function 'windowKeyDown', expected 1 argument (key), got %d (at line %d)\n", args_size, current_line);
+        exit(1);
+    }
+    AST_T* key = require_string(visitor, args[0], "windowKeyDown", 1);
+
+    int len = strlen(key->string_value);
+    if (len > 1 || len < 1) {
+        printf("Tripped on function 'windowKeyDown', key name is not a single letter");
+    };
+
+    AST_T* result = Init_AST(AST_BOOL);
+    if (GetKeyState((unsigned int)key->string_value[0]) & 0x8000) {
+        result->bool_value = true;
+    } else {
+        result->bool_value = false;
+    };
     return result;
 };
 

@@ -1,4 +1,4 @@
-include "../libs/test.iris";
+include <test>;
 
 print("before loop: ", gcStats(), "%n");
 

@@ -1,6 +1,6 @@
-include "../libs/vectors.iris";
-include "../libs/strings.iris";
-include "../libs/arrays.iris";
+include <vectors>;
+include <strings>;
+include <arrays>;
 
 var base = "Hello ";
 var joined = strcat(base, "World!");
@@ -35,26 +35,26 @@ print(type(Soldier), "%n");
 Vector2 me;
 Vector3 me2;
 
-me."x" = 14;
-me."y" = 35;
+me.x = 14;
+me.y = 35;
 
 Vector2Magnitude(me);
 
-me2."x" = 0;
-me2."y" = 1;
-me2."z" = 45;
+me2.x = 0;
+me2.y = 1;
+me2.z = 45;
 
 Vector3Magnitude(me2);
 
-print("MAGNITUDE 1: ", me."magnitude");
-print("MAGNITUDE 2: ", me2."magnitude", "%n");
+print("MAGNITUDE 1: ", me.magnitude);
+print("MAGNITUDE 2: ", me2.magnitude, "%n");
 
 var greeting = "Good afternoon!";
 
 print(strfind(greeting, "Food"), "%n");
 print(strfind(greeting, "afternoon"), "%n");
 
-var soldier_name = Soldier."Name";
+var soldier_name = Soldier.Name;
 
 checks (soldier_name) {
     ("Mike") : {
@@ -110,6 +110,8 @@ ifelse (b == 2 && f == 33){
 
 var goodbye = "n%!dlroW eybdooG";
 print(strrev(goodbye));
+
+print(input("Hello", true), "%n");
 
 print("GC STATS: ", gcStats(), "%n");
 gc();

@@ -9,6 +9,7 @@
 #include "include/scope.h"
 
 extern char* read_file_to_string(const char *filename);
+extern char* g_iris_library_dir;
 
 extern int current_line;
 extern int current_col;
@@ -393,7 +394,13 @@ static AST_T* Parser_Parse_Dot_Chain(Parser_T* Parser, Scope_T* Scope) {
             node = call;
             continue;
         }
-        AST_T* right = Parser_Parse_String(Parser, Scope);
+        AST_T* str = Init_AST(AST_STRING);
+        if (Parser->current_token->type != TOKEN_ID) {
+            printf("Tripped on dot chain, invalid key (at line %d)\n", Parser->current_token->line);
+        };
+        str->string_value = Parser->current_token->value;
+        Parser_Eat(Parser, TOKEN_ID);
+        AST_T* right = str;//Parser_Parse_String(Parser, Scope);
 
         AST_T* dot = Init_AST(AST_DOT);
         dot->dot_left = node;
@@ -956,11 +963,26 @@ AST_T* Parser_Parse_Return(Parser_T* Parser, Scope_T* Scope) {
 };
 
 AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
-    Parser_Eat(Parser, TOKEN_ID); // include
-    AST_T* path_node = Parser_Parse_String(Parser, Scope);
-    char* requested_path = path_node->string_value;
+    Parser_Eat(Parser, TOKEN_ID);
 
-    char* path = join_path(Parser->current_dir, requested_path);
+    char* requested_path;
+    char* path;
+
+    if (Parser->current_token->type == TOKEN_LT) {
+        Parser_Eat(Parser, TOKEN_LT);
+        char* libname = Parser->current_token->value;
+        Parser_Eat(Parser, TOKEN_ID);
+        Parser_Eat(Parser, TOKEN_GT);
+
+        char* filename = malloc(strlen(libname) + strlen(".iris") + 1);
+        sprintf(filename, "%s.iris", libname);
+        requested_path = join_path(g_iris_library_dir, filename);
+        free(filename);
+    } else {
+        AST_T* path_node = Parser_Parse_String(Parser, Scope);
+        requested_path = join_path(Parser->current_dir, path_node->string_value);
+    };
+    path = requested_path;
 
     for (size_t i = 0; i < Parser->included_paths_size; i++) {
         if (strcmp(Parser->included_paths[i], path) == 0) {

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "window.h"
 
@@ -60,24 +61,8 @@ AST_T* builtin_function_print(Visitor_T* visitor, AST_T** args, int args_size){
             case AST_NUMBER : printf("%g ", visited_ast->number_value); break;
             case AST_CLASS : printf("%s ", visited_ast->class_name); break;
             case AST_CLASS_INSTANTIATION :
-                //printf("{");
-                //AST_T* class_def = Scope_Get_Class_Definition(visited_ast->scope, visited_ast->instance_class_name);
                 printf("%s ", visited_ast->instance_class_name);
                 break;
-                /*for (size_t j = 0; j < class_def->class_size; j++) {
-                    AST_T* elem = Visitor_Visit(visitor, class_def->class_definition_value[j]);
-                    switch (elem->type) {
-                        case AST_STRING : printf(" %s", elem->string_value); break;
-                        case AST_NUMBER : printf(" %f", elem->number_value); break;
-                        case AST_BOOL: printf(" %s", elem->bool_value ? "true" : "false"); break;
-                        case AST_TABLE_DEFINITION : printf(" "); AST_T** new_args = calloc(1, sizeof(struct AST_STRUCT*)); new_args[0] = elem; builtin_function_print(visitor, new_args, 1); break;
-                        default : printf(" %p", elem); break;
-                    }
-                    if (j < (visited_ast->table_size-1)){
-                        printf(",");
-                    };
-                }
-                printf("}");*/
             case AST_TABLE_DEFINITION : {
                 printf("[");
                 for (size_t j = 0; j < visited_ast->table_size; j++) {
@@ -94,6 +79,30 @@ AST_T* builtin_function_print(Visitor_T* visitor, AST_T** args, int args_size){
                         default : printf(" %p", elem); break;
                     }
                     if (j < (visited_ast->table_size-1)){
+                        printf(",");
+                    };
+                }
+                printf(" ] ");
+                break;
+            };
+            case AST_DICTIONARY_DEFINITION : {
+                printf("[");
+                for (size_t j = 0; j < visited_ast->dictionary_size; j++) {
+                    AST_T* name = Visitor_Visit(visitor, visited_ast->dictionary_definition_value_name[j]);
+                    AST_T* elem = Visitor_Visit(visitor, visited_ast->dictionary_definition_value[j]);
+                    switch (elem->type) {
+                        case AST_STRING : printf(" '%s':%s", name->string_value, elem->string_value); break;
+                        case AST_NUMBER : printf(" '%s':%g", name->string_value, elem->number_value); break;
+                        case AST_BOOL: printf(" '%s':%s", elem->bool_value ? "true" : "false", name->string_value); break;
+                        case AST_CLASS : printf(" '%s':%s ", elem->class_name, name->string_value); break;
+                        case AST_CLASS_INSTANTIATION :
+                            printf(" '%s':%s", name->string_value, elem->instance_class_name);
+                            break;
+                        case AST_TABLE_DEFINITION : printf(" '%s':", name->string_value); AST_T** new_args = calloc(1, sizeof(struct AST_STRUCT*)); new_args[0] = elem; builtin_function_print(visitor, new_args, 1); break;
+                        case AST_DICTIONARY_DEFINITION : printf(" '%s':", name->string_value); AST_T** new_args2 = calloc(1, sizeof(struct AST_STRUCT*)); new_args2[0] = elem; builtin_function_print(visitor, new_args2, 1); break;
+                        default : printf(" '%s':%p", name->string_value, elem); break;
+                    };
+                    if (j < (visited_ast->dictionary_size-1)){
                         printf(",");
                     };
                 }
@@ -348,12 +357,12 @@ AST_T* builtin_function_table_get_from_index(Visitor_T* visitor, AST_T** args, i
         printf("Tripped on function 'table_get_from_index', type of argument 2 expects a number but did not receive one (at line %d)\n", current_line);
         exit(1);
     };
-    if ((size_t)index->number_value > table->table_size){
-        printf("Tripped on function 'table_get_from_index', index is out of bounds (1), at line %d\n", current_line);
+    if ((int)index->number_value <= 0){
+        printf("Tripped on function 'table_get_from_index', index is out of bounds (%g, smaller than 0), at line %d\n", index->number_value, current_line);
         exit(1);
     };
-    if ((int)index->number_value <= 0){
-        printf("Tripped on function 'table_get_from_index', index is out of bounds (0), at line %d\n", current_line);
+    if ((size_t)index->number_value-1 > table->table_size){
+        printf("Tripped on function 'table_get_from_index', index is out of bounds (%g, larger than table size of %zu), at line %d\n", index->number_value, table->table_size, current_line);
         exit(1);
     };
 
@@ -684,16 +693,45 @@ AST_T* builtin_function_to_string(Visitor_T* visitor, AST_T** args, int args_siz
         exit(1);
     };
 
+    int len = snprintf(NULL, 0, "%f", num->number_value) + 1;
+
     AST_T* stringg = Init_AST(AST_STRING);
-    stringg->string_value = calloc(1, sizeof(char));
+    stringg->string_value = calloc(len, sizeof(char));
+    if (!stringg->string_value) {
+        printf("Failed on function 'toString', memory allocation failed (at line %d)\n", current_line);
+        exit(1);
+    };
 
-    int len = snprintf(NULL, 0, "%f", num->number_value);
-
-    char floats[len];
-    snprintf(floats, sizeof(floats), "%f", num->number_value);
-    strcpy(stringg->string_value, floats);
+    snprintf(stringg->string_value, len, "%f", num->number_value);
 
     return stringg;
+};
+
+AST_T* builtin_function_floor(Visitor_T* visitor, AST_T** args, int args_size){
+    if (args_size > 2) {
+        printf("Tripped on function 'floor', argument overflow. (%d to 2), at line %d\n", args_size, current_line);
+        exit(1);
+    } else if (args_size < 2) {
+        printf("Tripped on function 'floor', argument underflow. (2 to %d), at line %d\n", args_size, current_line);
+        exit(1);
+    }
+
+    AST_T* num = Visitor_Visit(visitor, args[0]);
+    AST_T* floor_to = Visitor_Visit(visitor, args[1]);
+
+    if (num == NULL || num->type != AST_NUMBER) {
+        printf("Tripped on function 'floor', ineligible type for conversion (%d), at line %d\n", num->type, current_line);
+        exit(1);
+    };
+    if (floor_to == NULL || floor_to->type != AST_NUMBER) {
+        printf("Tripped on function 'floor', ineligible type for conversion (%d), at line %d\n", floor_to->type, current_line);
+        exit(1);
+    };
+
+    AST_T* rounded = Init_AST(AST_NUMBER);
+    rounded->number_value=floor(num->number_value/floor_to->number_value) * floor_to->number_value;
+
+    return rounded;
 };
 
 AST_T* builtin_function_read_file(Visitor_T* visitor, AST_T** args, int args_size){
@@ -864,8 +902,7 @@ AST_T* builtin_function_gc(Visitor_T* visitor, AST_T** args, int args_size) {
         exit(1);
     }
     if (visitor->call_depth > 0) {
-        printf("Tripped on function 'gc', cannot collect while a function call is in progress "
-               "(call it from the top level of your script, not from inside a function) (at line %d)\n", current_line);
+        printf("Tripped on function 'gc', cannot collect while a function call is in progress (call it from the top level of your script, not from inside a function) (at line %d)\n", current_line);
         exit(1);
     }
 
@@ -896,4 +933,74 @@ AST_T* builtin_function_gc_stats(Visitor_T* visitor, AST_T** args, int args_size
     if (!result->string_value) exit(EXIT_FAILURE);
     strcpy(result->string_value, buf);
     return result;
+};
+
+static char* read_variable_string() {
+    int capacity = 10; // Start with a small buffer size
+    int length = 0;
+    char *buffer = malloc(capacity * sizeof(char));
+
+    if (!buffer) return NULL;
+
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF) {
+        if (length + 1 >= capacity) {
+            capacity *= 2;
+            char *new_buffer = realloc(buffer, capacity * sizeof(char));
+            if (!new_buffer) {
+                free(buffer); // Clean up if out of memory
+                return NULL;
+            }
+            buffer = new_buffer;
+        }
+        buffer[length++] = ch;
+    }
+
+    buffer[length] = '\0'; // Null-terminate the string
+    return buffer;
+}
+
+AST_T* builtin_function_input(Visitor_T* visitor, AST_T** args, int args_size){
+    if (args_size > 2) {
+        printf("Tripped on function 'input', argument overflow. (%d to 2), at line %d\n", args_size, current_line);
+        exit(1);
+    } else if (args_size < 2) {
+        printf("Tripped on function 'input', argument underflow. (2 to %d), at line %d\n", args_size, current_line);
+        exit(1);
+    }
+
+    AST_T* prompt = Visitor_Visit(visitor, args[0]);
+    AST_T* input_message = Visitor_Visit(visitor, args[1]);
+
+    if (prompt->type != AST_STRING) {
+        printf("Tripped on function 'input', type of argument 1 expects a string but did not receive one (at line %d)\n", current_line);
+        exit(1);
+    };
+    if (input_message->type != AST_BOOL) {
+        printf("Tripped on function 'input', type of argument 2 expects a bool but did not receive one (at line %d)\n", current_line);
+        exit(1);
+    };
+    if (prompt == NULL || prompt->string_value == NULL) {
+        printf("Tripped on function 'input', argument 1 is null (at line %d)\n", current_line);
+        exit(1);
+    };
+
+    printf("%s", prompt->string_value);
+    if (input_message->bool_value == true) {
+        printf("\nWaiting for input: ");
+    };
+
+    char* input = read_variable_string();
+    if (!input){
+        printf("Failed on function 'input', internal error\n", input);
+        free(input);
+        exit(1);
+    };
+
+    AST_T* str = Init_AST(AST_STRING);
+    str->string_value = input;
+
+    free(input);
+
+    return str;
 };
