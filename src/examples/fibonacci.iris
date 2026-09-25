@@ -1,0 +1,29 @@
+func fibonacci_list(n) {
+    table sequence = [0, 1];
+    var index = 2;
+
+    ifelse (n <= 0){
+        return sequence;
+    } else {
+        if (n == 1) {
+            table sequence = [0, 1];
+            return sequence;
+        };
+    };
+
+    var c = 0;
+    var val = 0;
+
+    for (var v = 0: v<=n: "++"){
+        c = index + 1;
+        val = table_get_from_index(sequence, index) + table_get_from_index(sequence, index-1);
+        table_set_index(sequence, c, val);
+        index += 1;
+    };
+    return sequence;
+};
+
+var times = toNumber(input("How long should the fibonacci list be? ", false));
+
+var fibonacci = fibonacci_list(times);
+print(fibonacci);
