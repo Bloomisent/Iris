@@ -1,5 +1,3 @@
-#pragma once
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,11 +23,11 @@ static int g_iris_mouse_x = 0;
 static int g_iris_mouse_y = 0;
 static int g_iris_mouse_down = 0;
 
-extern int current_line;
-
 static LRESULT CALLBACK Iris_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     switch (msg) {
         case WM_CLOSE:
+            DestroyWindow(hwnd);
+            break;
         case WM_SIZE: {
             int new_width = LOWORD(lparam);
             int new_height = HIWORD(lparam);
@@ -78,7 +76,7 @@ static LRESULT CALLBACK Iris_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
 static AST_T* require_number(Visitor_T* visitor, AST_T* arg, const char* fn, int arg_index) {
     AST_T* v = Visitor_Visit(visitor, arg);
     if (v->type != AST_NUMBER) {
-        printf("Tripped on function '%s', argument %d expects a number but did not receive one (at line %d)\n", fn, arg_index, current_line);
+        printf("Tripped on function '%s', argument %d expects a number but did not receive one (at line %d)\n", fn, arg_index, v->current_line);
         exit(1);
     }
     return v;
@@ -87,7 +85,7 @@ static AST_T* require_number(Visitor_T* visitor, AST_T* arg, const char* fn, int
 static AST_T* require_string(Visitor_T* visitor, AST_T* arg, const char* fn, int arg_index) {
     AST_T* v = Visitor_Visit(visitor, arg);
     if (v->type != AST_STRING) {
-        printf("Tripped on function '%s', argument %d expects a string but did not receive one (at line %d)\n", fn, arg_index, current_line);
+        printf("Tripped on function '%s', argument %d expects a string but did not receive one (at line %d)\n", fn, arg_index, v->current_line);
         exit(1);
     }
     return v;
@@ -117,10 +115,6 @@ AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args
         exit(1);
     }
     AST_T* title = require_string(visitor, args[0], "windowCreate", 1);
-    if (title->type != AST_STRING) {
-        printf("Tripped on function 'windowCreate', argument 1 expects a string but did not receive one (at line %d)\n", current_line);
-        exit(1);
-    }
     AST_T* width = require_number(visitor, args[1], "windowCreate", 2);
     AST_T* height = require_number(visitor, args[2], "windowCreate", 3);
 
@@ -151,7 +145,7 @@ AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args
     );
 
     if (!g_iris_window) {
-        printf("Failed on function 'windowCreate', CreateWindowExA failed (at line %d)\n", current_line);
+        printf("Failed on function 'windowCreate', CreateWindowExA failed (at line %d)\n", width->current_line);
         exit(1);
     }
 
@@ -170,7 +164,7 @@ AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args
 
 AST_T* builtin_function_window_should_close(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 0) {
-        printf("Tripped on function 'windowShouldClose', expected 0 arguments, got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowShouldClose', expected 0 arguments, got %d\n", args_size);
         exit(1);
     }
 
@@ -187,7 +181,7 @@ AST_T* builtin_function_window_should_close(Visitor_T* visitor, AST_T** args, in
 
 AST_T* builtin_function_window_wait(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 1) {
-        printf("Tripped on function 'windowWait', expected 1 argument, got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowWait', expected 1 argument, got %d\n", args_size);
         exit(1);
     }
 
@@ -200,7 +194,7 @@ AST_T* builtin_function_window_wait(Visitor_T* visitor, AST_T** args, int args_s
 
 AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 0) {
-        printf("Tripped on function 'windowGetTime', expected 0 arguments, got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowGetTime', expected 0 arguments, got %d\n", args_size);
         exit(1);
     }
 
@@ -211,7 +205,7 @@ AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int ar
 
 AST_T* builtin_function_window_clear(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 3) {
-        printf("Tripped on function 'windowClear', expected 3 arguments (r, g, b), got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowClear', expected 3 arguments (r, g, b), got %d\n", args_size);
         exit(1);
     }
     AST_T* r = require_number(visitor, args[0], "windowClear", 1);
@@ -232,7 +226,7 @@ AST_T* builtin_function_window_clear(Visitor_T* visitor, AST_T** args, int args_
 
 AST_T* builtin_function_window_draw_rect(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 7) {
-        printf("Tripped on function 'windowDrawRect', expected 7 arguments (x, y, w, h, r, g, b), got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowDrawRect', expected 7 arguments (x, y, w, h, r, g, b), got %d\n", args_size);
         exit(1);
     }
     AST_T* x = require_number(visitor, args[0], "windowDrawRect", 1);
@@ -258,14 +252,14 @@ AST_T* builtin_function_window_draw_rect(Visitor_T* visitor, AST_T** args, int a
 
 AST_T* builtin_function_window_draw_text(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 6) {
-        printf("Tripped on function 'windowDrawText', expected 6 arguments (x, y, text, r, g, b), got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowDrawText', expected 6 arguments (x, y, text, r, g, b), got %d\n", args_size);
         exit(1);
     }
     AST_T* x = require_number(visitor, args[0], "windowDrawText", 1);
     AST_T* y = require_number(visitor, args[1], "windowDrawText", 2);
     AST_T* text = Visitor_Visit(visitor, args[2]);
     if (text->type != AST_STRING) {
-        printf("Tripped on function 'windowDrawText', argument 3 expects a string but did not receive one (at line %d)\n", current_line);
+        printf("Tripped on function 'windowDrawText', argument 3 expects a string but did not receive one (at line %d)\n", text->current_line);
         exit(1);
     }
     AST_T* r = require_number(visitor, args[3], "windowDrawText", 4);
@@ -281,7 +275,7 @@ AST_T* builtin_function_window_draw_text(Visitor_T* visitor, AST_T** args, int a
 
 AST_T* builtin_function_window_present(Visitor_T* visitor, AST_T** args, int args_size) {
     if (args_size != 0) {
-        printf("Tripped on function 'windowPresent', expected 0 arguments, got %d (at line %d)\n", args_size, current_line);
+        printf("Tripped on function 'windowPresent', expected 0 arguments, got %d\n", args_size);
         exit(1);
     }
     HDC screen_dc = GetDC(g_iris_window);
@@ -317,7 +311,7 @@ AST_T* builtin_function_window_key_pressed(Visitor_T* visitor, AST_T** args, int
 
     int len = strlen(key->string_value);
     if (len > 1 || len < 1) {
-        printf("Tripped on function 'windowKeyDown', key name is not a single letter");
+        printf("Tripped on function 'windowKeyDown', key name is not a single letter (at line %d)", key->current_line);
     };
 
     AST_T* result = Init_AST(AST_BOOL);
@@ -351,6 +345,8 @@ static AST_T* window_unsupported(const char* fn) {
     return Init_AST(AST_NOOP);
 };
 
+AST_T* builtin_function_window_width(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowWidth"); }
+AST_T* builtin_function_window_height(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowHeight"); }
 AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowCreate"); }
 AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowGetTime"); };
 AST_T* builtin_function_window_should_close(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowShouldClose"); }
@@ -360,6 +356,7 @@ AST_T* builtin_function_window_draw_text(Visitor_T* visitor, AST_T** args, int a
 AST_T* builtin_function_window_present(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowPresent"); }
 AST_T* builtin_function_window_mouse_x(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowMouseX"); }
 AST_T* builtin_function_window_mouse_y(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowMouseY"); }
+AST_T* builtin_function_window_key_pressed(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowKeyPressed"); }
 AST_T* builtin_function_window_mouse_pressed(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowMousePressed"); }
 AST_T* builtin_function_window_close(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowClose"); }
 

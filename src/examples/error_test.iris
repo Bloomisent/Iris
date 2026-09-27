@@ -1,0 +1,38 @@
+include <vectors>;
+include <math>;
+include <ui>;
+
+var e = 35;
+print(e);
+
+include <arrays>;
+
+func cfr(x){
+    return x + 1;
+};
+
+func safe_cfr(x){
+    ifelse (type(x) == "NUMBER"){
+        return cfr(x);
+    } else {
+        return null;
+    };
+};
+
+var x = 1;
+print(cfr(x));
+
+var li = 9;
+print(li);
+
+cfr(1);
+cfr(45);
+
+print(safe_cfr("22"));
+
+var n = null;
+print(n);
+
+# In the end, error reporting seems to work well now. Although, please keep in #
+# mind that errors for function calls return the line IN the function itself #
+# which may be problematic if the issue itself is how we called the function #

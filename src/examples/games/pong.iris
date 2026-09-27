@@ -115,12 +115,10 @@ func start() {
         divider.h = sheight;
 
         plr_score_txt.x = swidth - (swidth/4*3);
+        bot_score_txt.x = swidth - swidth/4;
 
-        Text bot_score_txt;
-        bot_score_txt.x = (swidth/4)*3;
-
-        if (player_pos.y > (sheight - plr."h")){
-            player_pos.y = (sheight - plr."h");
+        if (player_pos.y > (sheight - plr.h)){
+            player_pos.y = (sheight - plr.h);
         };
         if (player_pos.y < 15){
             player_pos.y = 15;
@@ -128,11 +126,9 @@ func start() {
 
         if (windowKeyPressed("W")){
             player_pos.y -= plr_speed * delta;
-            #print("forward%n");#
         };
         if (windowKeyPressed("S")){
             player_pos.y += plr_speed * delta;
-            #print("backward%n");#
         };
 
         if (opp_track == true) {

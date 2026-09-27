@@ -5,6 +5,8 @@
 
 #include "include/lexer.h"
 
+bool crlf = false;
+
 extern int current_line;
 extern int current_col;
 
@@ -25,10 +27,26 @@ Lexer_T* Init_Lexer(const char* contents) {
 
 void Lexer_Advance(Lexer_T* lexer) {
 
-    if(lexer->i < lexer->content_size) {
-        lexer->i++;
+    if(lexer->i >= lexer->content_size) {
+        return;
     };
 
+    if (lexer->c == '\r') {
+        current_line++;
+        current_col = 1;
+        if (lexer->i + 1 < lexer->content_size && lexer->contents[lexer->i + 1] == '\n') {
+            lexer->i++;
+        }
+    } else if (lexer->c == '\n') {
+        current_line++;
+        current_col = 1;
+    } else if (lexer->c == '\t') {
+        current_col += 4 - ((current_col - 1) % 4);
+    } else {
+        current_col++;
+    }
+
+    lexer->i++;
     lexer->c = lexer->i < lexer->content_size ? lexer->contents[lexer->i] : '\0';
 }
 
@@ -67,30 +85,13 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
     size_t capacity = 32;
     size_t length = 0;
 
-    char* value =
-        malloc(capacity);
+    char* value = malloc(capacity);
 
-    if (!value)
-        exit(EXIT_FAILURE);
+    if (!value) exit(EXIT_FAILURE);
 
-    while (lexer->c != '"' &&
-        lexer->c != '\0') {
+    while (lexer->c != '"' && lexer->c != '\0') {
 
         char ch = lexer->c;
-
-        if (lexer->c == '\n'){
-            while (lexer->c == '\n') {
-                current_line += 1;
-                current_col = 1;
-                Lexer_Advance(lexer);
-            };
-        } else if (lexer->c == '\r'){
-            while (lexer->c == '\r') {
-                current_line += 1;
-                current_col = 1;
-                Lexer_Advance(lexer);
-            };
-        };
 
         if (ch == '\\') {
             Lexer_Advance(lexer);
@@ -100,9 +101,9 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
                     stderr,
                     "Lexer error: "
                     "unterminated escape sequence"
-                    "at line %d, col %zu\n",
+                    "at line %d, col %d\n",
                     current_line,
-                    lexer->i - (current_line-1)
+                    current_col
                 );
                 exit(EXIT_FAILURE);
             }
@@ -153,9 +154,9 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
             stderr,
             "Lexer error: "
             "unterminated string"
-            "at line %d, col %zu\n",
+            "at line %d, col %d\n",
             current_line,
-            lexer->i-(current_line-1)
+            current_col
         );
         exit(EXIT_FAILURE);
     }
@@ -164,6 +165,9 @@ Token_T* Lexer_Collect_String(Lexer_T* lexer) {
     Lexer_Advance(lexer);
 
     Token_T* token = Init_Token(TOKEN_STRING, value);
+    token->position = lexer->i;
+    token->line = current_line;
+    token->col = current_col;
     free(value);
 
     return token;
@@ -186,11 +190,9 @@ Token_T* Lexer_Collect_Number(Lexer_T* lexer) {
                 free(value);
                 fprintf(
                     stderr,
-                    "Lexer error: "
-                    "invalid number"
-                    "at line %d, col %zu\n",
+                    "Lexer error: invalid number at line %d, col %d\n",
                     current_line,
-                    lexer->i-(current_line-1)
+                    current_col
                 );
                 exit(EXIT_FAILURE);
             }
@@ -214,6 +216,9 @@ Token_T* Lexer_Collect_Number(Lexer_T* lexer) {
     value[length] = '\0';
 
     Token_T* token = Init_Token(TOKEN_NUMBER, value);
+    token->position = lexer->i;
+    token->line = current_line;
+    token->col = current_col;
     free(value);
 
     return token;
@@ -247,6 +252,9 @@ Token_T* Lexer_Collect_Id(Lexer_T* lexer) {
     value[length] = '\0';
 
     Token_T* token = Init_Token(TOKEN_ID, value);
+    token->position = lexer->i;
+    token->line = current_line;
+    token->col = current_col;
     free(value);
 
     return token;
@@ -254,29 +262,8 @@ Token_T* Lexer_Collect_Id(Lexer_T* lexer) {
 
 Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
     while (lexer->c != '\0') {
-        if (lexer->c == '\n'){
-            while (lexer->c == '\n') {
-                current_line += 1;
-                current_col = 1;
-                Lexer_Advance(lexer);
-            };
-        } else if (lexer->c == '\r'){
-            while (lexer->c == '\r') {
-                current_line += 1;
-                current_col = 1;
-                Lexer_Advance(lexer);
-            };
-        };
-
-        if (lexer->c == '\t') {
-            current_col += 4 - ((current_col - 1) % 4);
-        } else {
-            current_col++;
-        }
-
         if (isspace((unsigned char)lexer->c)) {
             Lexer_Skip_WhiteSpace(lexer);
-
             continue;
         }
 
@@ -296,25 +283,12 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
         if (lexer->c == '#') {
             Lexer_Advance(lexer);
             while (lexer->c != '#' && lexer->c != '\0') {
-                if (lexer->c == '\n'){
-                    while (lexer->c == '\n') {
-                        current_line += 1;
-                        current_col = 1;
-                        Lexer_Advance(lexer);
-                    };
-                } else if (lexer->c == '\r'){
-                    while (lexer->c == '\r') {
-                        current_line += 1;
-                        current_col = 1;
-                        Lexer_Advance(lexer);
-                    };
-                };
                 Lexer_Advance(lexer);
             };
             if (lexer->c == '#') {
                 Lexer_Advance(lexer);
             } else {
-                fprintf(stderr, "Lexer Error: unterminated comment at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
+                fprintf(stderr, "Lexer Error: unterminated comment at position %zu, line %d, col %d\n", lexer->i, current_line, current_col);
                 exit(EXIT_FAILURE);
             };
             continue;
@@ -459,7 +433,7 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                     Lexer_Advance(lexer);
                     return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_AND, "&&"));
                 };
-                fprintf(stderr, "Lexer error: '&' must be followed by another '&' at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
+                fprintf(stderr, "Lexer error: '&' must be followed by another '&' at position %zu, line %d, col %d\n", lexer->i, current_line, current_col);
                 exit(EXIT_FAILURE);
 
             case '|':
@@ -467,7 +441,7 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                     Lexer_Advance(lexer);
                     return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_OR, "||"));
                 };
-                fprintf(stderr, "Lexer error: '|' must be followed by another '|' at position %zu, line %d, col %zu\n", lexer->i, current_line, lexer->i - (current_line-1));
+                fprintf(stderr, "Lexer error: '|' must be followed by another '|' at position %zu, line %d, col %d\n", lexer->i, current_line, current_col);
                 exit(EXIT_FAILURE);
 
             case '%':
@@ -545,11 +519,11 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
             default:
                 fprintf(
                     stderr,
-                    "Lexer error: unexpected character '%c' at position %zu, line %d, col %zu\n",
+                    "Lexer error: unexpected character '%c' at position %zu, line %d, col %d\n",
                     lexer->c,
                     lexer->i,
                     current_line,
-                    lexer->i - (current_line-1)
+                    current_col
                 );
                 exit(EXIT_FAILURE);
         }

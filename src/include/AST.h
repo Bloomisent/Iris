@@ -17,6 +17,7 @@ typedef enum {
     AST_UNARY_NOT,
     AST_DOT,
     AST_VARIABLE,
+    AST_NULL,
     AST_TABLE,
     AST_DICTIONARY,
     AST_CLASS,
@@ -137,5 +138,5 @@ typedef struct AST_STRUCT {
 
 } AST_T;
 
-AST_T* Init_AST(int type);
 char* Iris_Strdup(const char* s);
+AST_T* Init_AST(int type);

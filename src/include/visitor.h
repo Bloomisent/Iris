@@ -53,5 +53,6 @@ AST_T* VV_Class(Visitor_T* visitor, AST_T* node);
 AST_T* VV_String(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Number(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Bool(Visitor_T* visitor, AST_T* node);
+AST_T* VV_Null(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Compound(Visitor_T* visitor, AST_T* node);
 void Visitor_Clean(Visitor_T* visitor, AST_T* root);

@@ -3,7 +3,7 @@
 
 #include "include/token.h"
 
-Token_T* Init_Token(int type,const char* value) {
+Token_T* Init_Token(int type, const char* value) {
     Token_T* t = calloc(1, sizeof *t);
     if (!t) exit(EXIT_FAILURE);
 
@@ -11,9 +11,9 @@ Token_T* Init_Token(int type,const char* value) {
 
     size_t n = value ? strlen(value) : 0;
     t->value = malloc(n + 1);
-    t->position = 0;
-    t->line = 0;
-    t->col = 0;
+    t->position = 1;
+    t->line = 1;
+    t->col = 1;
 
     if (!t->value) exit(EXIT_FAILURE);
 

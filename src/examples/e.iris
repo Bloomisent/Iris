@@ -45,7 +45,7 @@ while (windowShouldClose() == 0) {
     uiRectangleDraw(bg);
     uiTextDraw(txt);
 
-    uiButtonDraw(b); # core #
+    uiButtonDraw(b, 0, 0, 0); # core #
     uiRectangleDraw(b_border);
     if (uiButtonClicked(b) == 1) {
         print("Hello World%n");
