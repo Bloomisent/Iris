@@ -1,3 +1,0 @@
-include "interpreter.iris";
-
-runFile(input("What is your file's name?", false));
