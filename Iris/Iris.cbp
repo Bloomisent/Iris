@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Iris" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="Iris" prefix_auto="1" extension_auto="1" />
+				<Option object_output="C:/C_APPS/Iris" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="Iris" prefix_auto="1" extension_auto="1" />
+				<Option object_output="C:/C_APPS/Iris" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Linker>
+			<Add library="gdi32" />
+			<Add library="user32" />
+		</Linker>
+		<Unit filename="src/AST.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/include/AST.h" />
+		<Unit filename="src/include/builtin.h" />
+		<Unit filename="src/include/lexer.h" />
+		<Unit filename="src/include/main.h" />
+		<Unit filename="src/include/parser.h" />
+		<Unit filename="src/include/scope.h" />
+		<Unit filename="src/include/token.h" />
+		<Unit filename="src/include/visitor.h" />
+		<Unit filename="src/include/window.h" />
+		<Unit filename="src/lexer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/parser.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/scope.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/token.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/visitor.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/window.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>

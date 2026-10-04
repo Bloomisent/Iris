@@ -1,0 +1,562 @@
+# ============================================================#
+# Iris Self-Hosted Interpreter #
+# ============================================================#
+
+include "lexer.iris";
+include "ast.iris";
+include "parser.iris";
+include "runtime.iris";
+
+# ------------------------------------------------------------#
+# Runtime function representation #
+# ------------------------------------------------------------#
+
+func makeFunction(parameters, body, closure) {
+
+    dict function = [
+        "kind": "function",
+        "parameters": parameters,
+        "body": body,
+        "closure": closure
+    ];
+
+    return function;
+}
+
+
+func isFunction(value) {
+
+    if (value == null) {
+        return false;
+    }
+
+    return (
+        type(value) == "TABLE"
+    );
+}
+
+
+# ------------------------------------------------------------#
+# Expressions #
+# ------------------------------------------------------------#
+
+func evaluate(node, environment) {
+
+    if (node == null) {
+        return null;
+    }
+
+
+    if (node.type == "number") {
+        return node.value;
+    }
+
+
+    if (node.type == "string") {
+        return node.value;
+    }
+
+
+    if (node.type == "boolean") {
+        return node.value;
+    }
+
+
+    if (node.type == "null") {
+        return null;
+    }
+
+
+    if (node.type == "identifier") {
+
+        return get(
+            environment,
+            node.name
+        );
+    }
+
+
+    if (node.type == "unary") {
+
+        var value = evaluate(
+            node.expression,
+            environment
+        );
+
+        if (node.operator == "-") {
+            return -value;
+        }
+
+        return null;
+    }
+
+
+    if (node.type == "binary") {
+
+        var left = evaluate(
+            node.left,
+            environment
+        );
+
+        var right = evaluate(
+            node.right,
+            environment
+        );
+
+        return binary(
+            left,
+            node.operator,
+            right
+        );
+    }
+
+
+    if (node.type == "call") {
+
+        var function = evaluate(
+            node.callee,
+            environment
+        );
+
+        table arguments = [];
+
+        var i = 1;
+
+        while (i <= node.arguments.length) {
+
+            table_set_index(
+                arguments,
+                arguments.length + 1,
+                evaluate(
+                    table_get_from_index(
+                        node.arguments,
+                        i
+                    ),
+                    environment
+                )
+            );
+
+            i += 1;
+        }
+
+        return call(
+            function,
+            arguments
+        );
+    }
+
+    return null;
+}
+
+
+# ------------------------------------------------------------ #
+# Binary operators #
+# ------------------------------------------------------------ #
+
+func binary(left, operator, right) {
+
+    if (operator == "+") {
+
+        if (
+            type(left) == "STRING" ||
+            type(right) == "STRING"
+        ) {
+            return toString(left) + toString(right);
+        }
+
+        return left + right;
+    }
+
+
+    if (operator == "-") {
+        return left - right;
+    }
+
+
+    if (operator == "*") {
+        return left * right;
+    }
+
+
+    if (operator == "/") {
+
+        if (right == 0) {
+            print("Runtime error: division by zero");
+            return null;
+        }
+
+        return left / right;
+    }
+
+
+    if (operator == "%") {
+        return left % right;
+    }
+
+
+    if (operator == "^") {
+
+        # Iris's native exponent operator is '^'.
+         If the host build doesn't expose it through
+         the Iris expression evaluator, replace this
+         with a power implementation.#
+
+        return left ^ right;
+    }
+
+
+    if (operator == ">") {
+        return left > right;
+    }
+
+
+    if (operator == "<") {
+        return left < right;
+    }
+
+
+    if (operator == ">=") {
+        return left >= right;
+    }
+
+
+    if (operator == "<=") {
+        return left <= right;
+    }
+
+
+    if (operator == "==") {
+        return equal(left, right);
+    }
+
+
+    if (operator == "!=") {
+        return !equal(left, right);
+    }
+
+
+    print(
+        "Runtime error: unknown operator " +
+        operator
+    );
+
+    return null;
+}
+
+
+# ------------------------------------------------------------ #
+# Calls #
+# ------------------------------------------------------------ #
+
+func call(function, arguments) {
+
+    if (function == null) {
+        print("Runtime error: not callable");
+        return null;
+    }
+
+
+    # Native print #
+
+    if (function == "__print") {
+
+        if (arguments.length > 0) {
+            print(
+                table_get_from_index(
+                    arguments,
+                    1
+                )
+            );
+        }
+
+        return null;
+    }
+
+
+    if (!isFunction(function)) {
+        print("Runtime error: value is not callable");
+        return null;
+    }
+
+
+    var environment = Environment(
+        function.closure
+    );
+
+
+    var i = 1;
+
+    while (
+        i <= function.parameters.length
+    ) {
+
+        var parameter =
+            table_get_from_index(
+                function.parameters,
+                i
+            );
+
+        var argument = null;
+
+        if (i <= arguments.length) {
+
+            argument =
+                table_get_from_index(
+                    arguments,
+                    i
+                );
+        }
+
+        define(
+            environment,
+            parameter,
+            argument
+        );
+
+        i += 1;
+    }
+
+
+    var result = executeBlock(
+        function.body,
+        environment
+    );
+
+
+    if (
+        result != null &&
+        result.kind == "return"
+    ) {
+        return result.value;
+    }
+
+
+    return null;
+}
+
+
+# ------------------------------------------------------------#
+# Statements #
+# ------------------------------------------------------------#
+
+func execute(node, environment) {
+
+    if (node.type == "expression") {
+
+        evaluate(
+            node.expression,
+            environment
+        );
+
+        return null;
+    }
+
+
+    if (node.type == "variable") {
+
+        var value = null;
+
+        if (node.initializer != null) {
+
+            value = evaluate(
+                node.initializer,
+                environment
+            );
+        }
+
+        define(
+            environment,
+            node.name,
+            value
+        );
+
+        return null;
+    }
+
+
+    if (node.type == "assignment") {
+
+        var value = evaluate(
+            node.value,
+            environment
+        );
+
+        set(
+            environment,
+            node.name,
+            value
+        );
+
+        return null;
+    }
+
+
+    if (node.type == "block") {
+
+        var child =
+            Environment(environment);
+
+        return executeBlock(
+            node.body,
+            child
+        );
+    }
+
+
+    if (node.type == "if") {
+
+        var condition = evaluate(
+            node.condition,
+            environment
+        );
+
+        if (truthy(condition)) {
+
+            return execute(
+                node.thenBranch,
+                environment
+            );
+        }
+
+        if (node.elseBranch != null) {
+
+            return execute(
+                node.elseBranch,
+                environment
+            );
+        }
+
+        return null;
+    }
+
+
+    if (node.type == "while") {
+
+        while (
+            truthy(
+                evaluate(
+                    node.condition,
+                    environment
+                )
+            )
+        ) {
+
+            var result = execute(
+                node.body,
+                environment
+            );
+
+            if (
+                result != null &&
+                result.kind == "return"
+            ) {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+
+    if (node.type == "return") {
+
+        var value = null;
+
+        if (node.value != null) {
+
+            value = evaluate(
+                node.value,
+                environment
+            );
+        }
+
+        return [
+            "kind": "return",
+            "value": value
+        ];
+    }
+
+
+    if (node.type == "function") {
+
+        var function =
+            makeFunction(
+                node.parameters,
+                node.body,
+                environment
+            );
+
+        define(
+            environment,
+            node.name,
+            function
+        );
+
+        return null;
+    }
+
+    return null;
+}
+
+
+func executeBlock(statements, environment) {
+
+    var i = 1;
+
+    while (i <= statements.length) {
+
+        var statement =
+            table_get_from_index(
+                statements,
+                i
+            );
+
+        var result = execute(
+            statement,
+            environment
+        );
+
+        if (result != null) {
+            return result;
+        }
+
+        i += 1;
+    }
+
+    return null;
+}
+
+
+# ------------------------------------------------------------ #
+# Run a program #
+# ------------------------------------------------------------ #
+
+func run(source) {
+
+    var tokens = lex(source);
+
+    var tree = parse(tokens);
+
+    var global = Environment(null);
+
+    # Builtin print marker #
+
+    define(
+        global,
+        "print",
+        "__print"
+    );
+
+    executeBlock(
+        tree,
+        global
+    );
+}
+
+
+func runFile(path) {
+
+    var source = readFile(path);
+
+    run(source);
+}

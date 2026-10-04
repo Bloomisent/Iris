@@ -1,0 +1,70 @@
+class TreeNode {
+    "value": 0,
+    "left": null,
+    "right": null,
+    "down_right" : null,
+    "down_left" : null,
+    "init": func(self, val) {
+        self.value = val;
+        self.left = null;
+        self.right = null;
+        self.down_right = null;
+        self.down_left = null;
+    }
+};
+
+# Helper function to insert a value into a Binary Search Tree #
+func insertNode(root, down, val) {
+    if (type(root) == "NULL") {
+        # Create a new instance #
+        TreeNode newNode;
+        newNode.init(val);
+        return newNode;
+    };
+
+    if (down == true) {
+        if (val < root.value) {
+            root.down_left = insertNode(root.down_left, down, val);
+        } else {
+            if (val > root.value) {
+                root.down_right = insertNode(root.down_right, down, val);
+            };
+        };
+    } else {
+        if (val < root.value) {
+            root.left = insertNode(root.left, down, val);
+        } else {
+            if (val > root.value) {
+                root.right = insertNode(root.right, down, val);
+            };
+        };
+    };
+
+    return root;
+};
+
+func inOrder(root, isChild) {
+    if (type(root) != "NULL") {
+        if (isChild == false) {
+            print("%n");
+        };
+
+        inOrder(root.left, true);
+
+        print(root.value);
+
+        # Left down branch #
+        if (type(root.down_left) != "NULL") {
+            print("%n  |--");
+            inOrder(root.down_left, true);
+        };
+
+        # Right down branch (fixed type check to root.down_right) #
+        if (type(root.down_right) != "NULL") {
+            print("%n  |--");
+            inOrder(root.down_right, true);
+        };
+
+        inOrder(root.right, true);
+    };
+};

@@ -1,0 +1,15 @@
+var profile = null;
+var avatar = 0;
+avatar = ? (profile == null) "yes" : "no";
+
+print(avatar, "%n");
+
+class plr {
+    "hi" : 1
+};
+
+plr Mike;
+plr Richard;
+table plrs = [Mike, Richard];
+
+print(type(table_get_from_index(plrs, 1)), "%n");

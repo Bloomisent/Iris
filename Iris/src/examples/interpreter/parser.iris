@@ -1,0 +1,638 @@
+# ============================================================#
+# Iris Self-Hosted Parser #
+# ============================================================#
+
+include "ast.iris";
+
+
+var tokens = [];
+var current = 1;
+
+
+func peek() {
+    return table_get_from_index(tokens, current);
+}
+
+
+func previous() {
+    return table_get_from_index(tokens, current - 1);
+}
+
+
+func check(kind) {
+    return peek().type == kind;
+}
+
+
+func advance() {
+
+    if (current <= tokens.length) {
+        current += 1;
+    }
+
+    return previous();
+}
+
+
+func match(kind) {
+
+    if (!check(kind)) {
+        return false;
+    }
+
+    advance();
+
+    return true;
+}
+
+
+func consume(kind, message) {
+
+    if (check(kind)) {
+        return advance();
+    }
+
+    print(
+        "Parser error at line " +
+        toString(peek().line) +
+        ": " +
+        message
+    );
+
+    return null;
+}
+
+
+func parse(sourceTokens) {
+
+    tokens = sourceTokens;
+    current = 1;
+
+    table statements = [];
+
+    while (!check("EOF")) {
+
+        var statement = declaration();
+
+        if (statement != null) {
+            table_set_index(
+                statements,
+                statements.length + 1,
+                statement
+            );
+        }
+    }
+
+    return statements;
+}
+
+
+# ------------------------------------------------------------#
+# Declarations#
+# ------------------------------------------------------------#
+
+func declaration() {
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "var"
+    ) {
+        return variableDeclaration();
+    }
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "func"
+    ) {
+        return functionDeclaration();
+    }
+
+    return statement();
+}
+
+
+func variableDeclaration() {
+
+    advance();
+
+    var name = consume(
+        "IDENTIFIER",
+        "Expected variable name."
+    );
+
+    var initializer = Null();
+
+    if (match("EQUAL")) {
+        initializer = expression();
+    }
+
+    consume(
+        "SEMICOLON",
+        "Expected ';' after variable declaration."
+    );
+
+    return Variable(
+        name.value,
+        initializer
+    );
+}
+
+
+func functionDeclaration() {
+
+    advance();
+
+    var name = consume(
+        "IDENTIFIER",
+        "Expected function name."
+    );
+
+    consume(
+        "LEFT_PAREN",
+        "Expected '(' after function name."
+    );
+
+    table parameters = [];
+
+    if (!check("RIGHT_PAREN")) {
+
+        while (true) {
+
+            var parameter = consume(
+                "IDENTIFIER",
+                "Expected parameter name."
+            );
+
+            table_set_index(
+                parameters,
+                parameters.length + 1,
+                parameter.value
+            );
+
+            if (!match("COMMA")) {
+                break;
+            }
+        }
+    }
+
+    consume(
+        "RIGHT_PAREN",
+        "Expected ')' after parameters."
+    );
+
+    consume(
+        "LEFT_BRACE",
+        "Expected '{' before function body."
+    );
+
+    var body = blockStatements();
+
+    return Function(
+        name.value,
+        parameters,
+        body
+    );
+}
+
+
+# ------------------------------------------------------------#
+# Statements#
+# ------------------------------------------------------------#
+
+func statement() {
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "if"
+    ) {
+        return ifStatement();
+    }
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "ifelse"
+    ) {
+        return ifElseStatement();
+    }
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "while"
+    ) {
+        return whileStatement();
+    }
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "return"
+    ) {
+        return returnStatement();
+    }
+
+    if (match("LEFT_BRACE")) {
+        return Block(blockStatements());
+    }
+
+    return expressionStatement();
+}
+
+
+func blockStatements() {
+
+    table statements = [];
+
+    while (
+        !check("RIGHT_BRACE") &&
+        !check("EOF")
+    ) {
+
+        var statement = declaration();
+
+        if (statement != null) {
+            table_set_index(
+                statements,
+                statements.length + 1,
+                statement
+            );
+        }
+    }
+
+    consume(
+        "RIGHT_BRACE",
+        "Expected '}' after block."
+    );
+
+    return statements;
+}
+
+
+func ifStatement() {
+
+    advance();
+
+    consume(
+        "LEFT_PAREN",
+        "Expected '(' after if."
+    );
+
+    var condition = expression();
+
+    consume(
+        "RIGHT_PAREN",
+        "Expected ')'."
+    );
+
+    var body = statement();
+
+    return If(
+        condition,
+        body,
+        null
+    );
+}
+
+
+func ifElseStatement() {
+
+    advance();
+
+    consume(
+        "LEFT_PAREN",
+        "Expected '(' after ifelse."
+    );
+
+    var condition = expression();
+
+    consume(
+        "RIGHT_PAREN",
+        "Expected ')'."
+    );
+
+    var thenBranch = statement();
+
+    var elseBranch = null;
+
+    if (
+        check("IDENTIFIER") &&
+        peek().value == "else"
+    ) {
+        advance();
+        elseBranch = statement();
+    }
+
+    return If(
+        condition,
+        thenBranch,
+        elseBranch
+    );
+}
+
+
+func whileStatement() {
+
+    advance();
+
+    consume(
+        "LEFT_PAREN",
+        "Expected '(' after while."
+    );
+
+    var condition = expression();
+
+    consume(
+        "RIGHT_PAREN",
+        "Expected ')'."
+    );
+
+    var body = statement();
+
+    return While(
+        condition,
+        body
+    );
+}
+
+
+func returnStatement() {
+
+    advance();
+
+    var value = Null();
+
+    if (!check("SEMICOLON")) {
+        value = expression();
+    }
+
+    consume(
+        "SEMICOLON",
+        "Expected ';' after return."
+    );
+
+    return Return(value);
+}
+
+
+func expressionStatement() {
+
+    var value = expression();
+
+    consume(
+        "SEMICOLON",
+        "Expected ';' after expression."
+    );
+
+    return Expression(value);
+}
+
+
+# ------------------------------------------------------------#
+# Expressions#
+# ------------------------------------------------------------#
+
+func expression() {
+    return assignment();
+}
+
+
+func assignment() {
+
+    var value = comparison();
+
+    if (match("EQUAL")) {
+
+        var equals = previous();
+        var right = assignment();
+
+        if (value.type == "identifier") {
+
+            return Assignment(
+                value.name,
+                right
+            );
+        }
+
+        print(
+            "Invalid assignment at line " +
+            toString(equals.line)
+        );
+    }
+
+    return value;
+}
+
+
+func comparison() {
+
+    var expressionValue = term();
+
+    while (
+        check("GREATER") ||
+        check("GREATER_EQUAL") ||
+        check("LESS") ||
+        check("LESS_EQUAL") ||
+        check("EQUAL_EQUAL") ||
+        check("NOT_EQUAL")
+    ) {
+
+        var operator = advance();
+
+        var right = term();
+
+        expressionValue = Binary(
+            expressionValue,
+            operator.value,
+            right
+        );
+    }
+
+    return expressionValue;
+}
+
+
+func term() {
+
+    var expressionValue = factor();
+
+    while (
+        check("PLUS") ||
+        check("MINUS")
+    ) {
+
+        var operator = advance();
+
+        var right = factor();
+
+        expressionValue = Binary(
+            expressionValue,
+            operator.value,
+            right
+        );
+    }
+
+    return expressionValue;
+}
+
+
+func factor() {
+
+    var expressionValue = power();
+
+    while (
+        check("STAR") ||
+        check("SLASH") ||
+        check("PERCENT")
+    ) {
+
+        var operator = advance();
+
+        var right = power();
+
+        expressionValue = Binary(
+            expressionValue,
+            operator.value,
+            right
+        );
+    }
+
+    return expressionValue;
+}
+
+
+func power() {
+
+    var expressionValue = unary();
+
+    while (check("CARET")) {
+
+        var operator = advance();
+
+        var right = unary();
+
+        expressionValue = Binary(
+            expressionValue,
+            operator.value,
+            right
+        );
+    }
+
+    return expressionValue;
+}
+
+
+func unary() {
+
+    if (match("MINUS")) {
+
+        return Unary(
+            "-",
+            unary()
+        );
+    }
+
+    return call();
+}
+
+
+func call() {
+
+    var expressionValue = primary();
+
+    while (true) {
+
+        if (match("LEFT_PAREN")) {
+
+            expressionValue = finishCall(
+                expressionValue
+            );
+        }
+        else {
+            break;
+        }
+    }
+
+    return expressionValue;
+}
+
+
+func finishCall(callee) {
+
+    table arguments = [];
+
+    if (!check("RIGHT_PAREN")) {
+
+        while (true) {
+
+            table_set_index(
+                arguments,
+                arguments.length + 1,
+                expression()
+            );
+
+            if (!match("COMMA")) {
+                break;
+            }
+        }
+    }
+
+    consume(
+        "RIGHT_PAREN",
+        "Expected ')' after arguments."
+    );
+
+    return Call(
+        callee,
+        arguments
+    );
+}
+
+
+func primary() {
+
+    if (match("NUMBER")) {
+        return Number(previous().value);
+    }
+
+    if (match("STRING")) {
+        return String(previous().value);
+    }
+
+    if (check("IDENTIFIER")) {
+
+        var name = advance().value;
+
+        if (name == "true") {
+            return Boolean(true);
+        }
+
+        if (name == "false") {
+            return Boolean(false);
+        }
+
+        if (name == "null") {
+            return Null();
+        }
+
+        return Identifier(name);
+    }
+
+    if (match("LEFT_PAREN")) {
+
+        var value = expression();
+
+        consume(
+            "RIGHT_PAREN",
+            "Expected ')'."
+        );
+
+        return value;
+    }
+
+    print(
+        "Parser error: unexpected token " +
+        peek().value
+    );
+
+    advance();
+
+    return Null();
+}

@@ -1,0 +1,126 @@
+# ============================================================#
+# Iris Runtime #
+# ============================================================#
+
+func Environment(parent) {
+
+    dict environment = [
+        "values": [],
+        "parent": parent
+    ];
+
+    return environment;
+}
+
+
+func define(environment, name, value) {
+
+    dict_set_index(
+        environment.values,
+        name,
+        value
+    );
+
+    return value;
+}
+
+
+func exists(environment, name) {
+
+    var value = dict_get_from_index(
+        environment.values,
+        name
+    );
+
+    if (value != null) {
+        return true;
+    }
+
+    if (environment.parent != null) {
+        return exists(
+            environment.parent,
+            name
+        );
+    }
+
+    return false;
+}
+
+
+func get(environment, name) {
+
+    var value = dict_get_from_index(
+        environment.values,
+        name
+    );
+
+    if (value != null) {
+        return value;
+    }
+
+    if (environment.parent != null) {
+        return get(
+            environment.parent,
+            name
+        );
+    }
+
+    print(
+        "Runtime error: undefined variable '" +
+        name +
+        "'"
+    );
+
+    return null;
+}
+
+
+func set(environment, name, value) {
+
+    if (exists(environment, name)) {
+
+        dict_set_index(
+            environment.values,
+            name,
+            value
+        );
+
+        return value;
+    }
+
+    print(
+        "Runtime error: undefined variable '" +
+        name +
+        "'"
+    );
+
+    return null;
+}
+
+
+func truthy(value) {
+
+    if (value == null) {
+        return false;
+    }
+
+    if (type(value) == "BOOL") {
+        return value;
+    }
+
+    return true;
+}
+
+
+func equal(a, b) {
+
+    if (a == null && b == null) {
+        return true;
+    }
+
+    if (a == null || b == null) {
+        return false;
+    }
+
+    return a == b;
+}

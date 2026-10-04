@@ -1,0 +1,112 @@
+include <strings>;
+include <arrays>;
+include <ui>;
+include <vectors>;
+
+var input_res = "";
+
+var sheight = 900;
+var swidth = 1100;
+
+Rectangle plr_model;
+plr_model.x = 15;
+plr_model.y = 15;
+plr_model.w = 1.5;
+plr_model.h = 2.35;
+plr_model.bgR = 255;
+plr_model.bgG = 255;
+plr_model.bgB = 255;
+
+class Weapon {
+    "name": "Lyal",
+    "type": "Long Sword",
+    "damage" : 10,
+    "m1_speed" : 1,
+    "max_range" : 17.5
+};
+
+class Player {
+    "weapon" : Weapon,
+    "health" : 100,
+    "name" : "Will",
+    "walk_speed" : 0.75,
+    "pos" : "NULL",
+    "model" : "NULL",
+    "init" : func(self, speed, weapon, health, name, pos, model){
+        self.weapon = weapon;
+        self.health = health;
+        self.name = name;
+        self.pos = pos;
+        self.model = plr_model;
+        self.walk_speed = speed;
+    }
+};
+
+func checkRectIntersection(r1, r2) {
+    return (r1.x < r2.x + r2.w &&
+            r1.x + r1.w > r2.x &&
+            r1.y < r2.y + r2.h &&
+            r1.y + r1.h > r2.y);
+};
+
+func promptDialog(dialog){
+    return input(dialog, false); # Make this into a full on ui soon #
+};
+
+func start() {
+    var delta = 1;
+    var speed = 0.072;
+
+    Vector2 plr_pos;
+    var plr_speed = 8;
+
+    Weapon wpn;
+    Player plr;
+
+    var name =  promptDialog("Adventurer... what is your name? ");
+
+    if (name == "Will") {
+        print("Will, huh...%nIt's been a while, hasn't it...%n");
+    } else {
+        print("What a beautiful name, new one. %n");
+    };
+
+    var sword_name = promptDialog(name + ", what shall your sword be called? ");
+    wpn.name = sword_name;
+
+    if (sword_name == "Doom") {
+        print("Doom... You have a rather great taste in name, ", name, "%n");
+    } else {
+        print("What a great name, ", name, "%n");
+    };
+
+    windowCreate("Will of Doom RPG", swidth, sheight);
+
+    plr.init(plr_speed, wpn, 100, "Will", plr_pos, plr_model);
+
+    while (windowShouldClose() == 0) {
+        #delta = floor(windowGetTime(), 100);#
+        windowClear(0, 0, 0);
+
+        if (windowKeyPressed("W")){
+            plr.pos.y -= plr.walk_speed * delta;
+        };
+        if (windowKeyPressed("S")){
+            plr.pos.y += plr.walk_speed * delta;
+        };
+        if (windowKeyPressed("A")){
+            plr.pos.x -= plr.walk_speed * delta;
+        };
+        if (windowKeyPressed("D")){
+            plr.pos.x += plr.walk_speed * delta;
+        };
+
+        uiRectangleDraw(plr.model);
+
+        windowPresent();
+    };
+    windowClose();
+};
+
+start();
+gc();

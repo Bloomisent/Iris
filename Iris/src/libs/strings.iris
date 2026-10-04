@@ -1,0 +1,48 @@
+func strcat(string1, string2) {
+    return string1 + string2;
+};
+
+func strlen(string) {
+    var times = 0;
+
+    func forfunc(){
+        times = times + 1;
+    };
+
+    ForEach(string, "forfunc");
+    return times;
+};
+
+func strrev(string) {
+    var times = 0;
+    var reversed = "";
+
+    var i = strlen(string);
+
+    for (i: i != 0: "--"){
+        reversed = strcat(reversed, charAt(string, i));
+    };
+    return reversed;
+};
+
+func strfind(string, substring) {
+    var strLen = strlen(string);
+    var subLen = strlen(substring);
+    var lastStart = strLen - subLen + 1;
+
+    var i = 1;
+    for (i: i <= lastStart: "++") {
+        var matched = 1;
+        var a = 1;
+        for (a: a <=subLen: "++") {
+            if (charAt(string, i + a - 1) != charAt(substring, a)) {
+                matched = 0;
+            };
+        };
+        if (matched == 1) {
+            return i;
+        };
+    };
+    return 0 - 1;
+};
+
