@@ -10,7 +10,7 @@ func assertEqual(actual, expected, label) {
         return 0;
     };
 
-    ifelse (actual == expected) {
+    if (actual == expected) {
         __test_pass_count = __test_pass_count + 1;
         print("PASS: ", label, "%n");
     } else {
@@ -21,7 +21,7 @@ func assertEqual(actual, expected, label) {
 };
 
 func assertTrue(cond, label) {
-    ifelse (cond) {
+    if (cond) {
         __test_pass_count = __test_pass_count + 1;
         print("PASS: ", label, "%n");
     } else {
@@ -32,7 +32,7 @@ func assertTrue(cond, label) {
 };
 
 func assertFalse(cond, label) {
-    ifelse (cond) {
+    if (cond) {
         __test_fail_count = __test_fail_count + 1;
         print("FAIL: ", label, " -- expected false, got true%n");
     } else {

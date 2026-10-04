@@ -1,4 +1,4 @@
-include "math.iris";
+include "maths.iris";
 
 class Vector2 {
     "x" : 0,

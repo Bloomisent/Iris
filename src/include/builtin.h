@@ -15,7 +15,7 @@
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 extern int current_line;
-
+/*
 static char *removeSub(const char *str, const char *sub, char *new) {
     char *p = new;
     size_t len = strlen(sub);
@@ -30,7 +30,7 @@ static char *removeSub(const char *str, const char *sub, char *new) {
     strcpy(p, str);
     return new;
 };
-
+*/
 AST_T* builtin_function_print(Visitor_T* visitor, AST_T** args, int args_size){
     if (args_size <= 0) {
         printf("Tripped on function 'print', argument underflow. (0 to 1)\n");
@@ -263,7 +263,8 @@ AST_T* builtin_function_dict_get_index(Visitor_T* visitor, AST_T** args, int arg
     for (int x=0;x<dict->dictionary_size;x++) {
         AST_T* d_val = Visitor_Visit(visitor, dict->dictionary_definition_value[x]);
         if (d_val->type != value->type) {
-            num->number_value = -1;
+            num->type = AST_BOOL;
+            num->number_value = false;
         } else {
             switch (d_val->type) {
                 case AST_STRING: {
@@ -318,7 +319,7 @@ AST_T* builtin_function_dict_set_index(Visitor_T* visitor, AST_T** args, int arg
         exit(1);
     };
 
-    for (int x;x<dict->dictionary_size;x++) {
+    for (int x = 0;x<dict->dictionary_size;x++) {
         AST_T* d_name = Visitor_Visit(visitor, dict->dictionary_definition_value_name[x]);
         if (strcmp(d_name->string_value, index->string_value) == 0) {
             dict->dictionary_definition_value[x] = value;
@@ -364,26 +365,47 @@ AST_T* builtin_function_table_get_from_index(Visitor_T* visitor, AST_T** args, i
         printf("Tripped on function 'table_get_from_index', type of argument 2 expects a number but did not receive one (at line %d)\n", index->current_line);
         exit(1);
     };
+
+    AST_T* ast_var = Init_AST(AST_BOOL);
+
     if ((int)index->number_value <= 0){
-        printf("Tripped on function 'table_get_from_index', index is out of bounds (%g, smaller than 0), at line %d\n", index->number_value, index->current_line);
-        exit(1);
+        ast_var->bool_value = false;
+        return ast_var;
     };
     if ((size_t)index->number_value-1 > table->table_size){
-        printf("Tripped on function 'table_get_from_index', index is out of bounds (%g, larger than table size of %zu), at line %d\n", index->number_value, table->table_size, index->current_line);
-        exit(1);
+        ast_var->bool_value = false;
+        return ast_var;
     };
 
     AST_T* elem = Visitor_Visit(visitor, table->table_definition_value[(int)index->number_value - 1]);
-    AST_T* ast_var = Init_AST(AST_STRING);
+    ast_var->type = elem->type;
+    ast_var->scope = table->scope;
 
     switch (elem->type) {
-        case AST_STRING: ast_var->scope = table->scope; ast_var->string_value = elem->string_value; return ast_var; break;
+        case AST_STRING: ast_var->type = AST_STRING; ast_var->scope = table->scope; ast_var->string_value = elem->string_value; return ast_var; break;
         case AST_NUMBER: ast_var->type = AST_NUMBER; ast_var->scope = table->scope; ast_var->number_value = elem->number_value; return ast_var; break;
         case AST_BOOL: ast_var->type = AST_BOOL; ast_var->scope = table->scope; ast_var->bool_value = elem->bool_value; return ast_var; break;
+        case AST_NULL: ast_var->type = AST_NULL; ast_var->scope = table->scope; return ast_var; break;
         case AST_TABLE_DEFINITION : {
-            ast_var->type = AST_TABLE_DEFINITION;
-            ast_var->scope = table->scope;
-            ast_var->table_definition_value = elem->table_definition_value;
+            for (size_t i=0;i<ast_var->table_size;i++) {
+                ast_var->table_definition_value[i] = elem->table_definition_value[i];
+            };
+            return ast_var;
+            break;
+        }
+        case AST_DICTIONARY_DEFINITION : {
+            for (size_t i=0;i<ast_var->dictionary_size;i++) {
+                ast_var->dictionary_definition_value_name[i] = elem->dictionary_definition_value_name[i];
+                ast_var->dictionary_definition_value[i] = elem->dictionary_definition_value[i];
+            };
+            return ast_var;
+            break;
+        }
+        case AST_CLASS_DEFINITION : {
+            for (size_t i=0;i<ast_var->class_size;i++) {
+                ast_var->class_definition_value_name[i] = elem->class_definition_value_name[i];
+                ast_var->class_definition_value[i] = elem->class_definition_value[i];
+            };
             return ast_var;
             break;
         }
@@ -416,12 +438,25 @@ AST_T* builtin_function_table_get_index(Visitor_T* visitor, AST_T** args, int ar
 
     AST_T* num = Init_AST(AST_NUMBER);
 
-    for (int x;x<table->table_size;x++) {
+    for (int x=0;x<table->table_size;x++) {
         AST_T* t_val = Visitor_Visit(visitor, table->table_definition_value[x]);
         if (t_val->type != value->type) {
-            num->number_value = -1;
+            num->type = AST_BOOL;
+            num->bool_value = false;
         } else {
             switch (t_val->type) {
+                case AST_CLASS_DEFINITION: {
+                    if (t_val->class_definition_value == value->class_definition_value) {
+                        num->number_value = x;
+                        break;
+                    };
+                };
+                case AST_DICTIONARY_DEFINITION: {
+                    if (t_val->dictionary_definition_value == value->dictionary_definition_value) {
+                        num->number_value = x;
+                        break;
+                    };
+                };
                 case AST_TABLE_DEFINITION: {
                     if (t_val->table_definition_value == value->table_definition_value) {
                         num->number_value = x;
@@ -442,6 +477,12 @@ AST_T* builtin_function_table_get_index(Visitor_T* visitor, AST_T** args, int ar
                 };
                 case AST_BOOL: {
                     if (t_val->bool_value == value->bool_value) {
+                        num->number_value = x;
+                        break;
+                    };
+                };
+                case AST_NULL: {
+                    if (t_val->type == value->type) {
                         num->number_value = x;
                         break;
                     };
@@ -525,7 +566,6 @@ AST_T* builtin_function_char_at(Visitor_T* visitor, AST_T** args, int args_size)
     if (!ast_var->string_value) exit(EXIT_FAILURE);
 
     if ((int)index->number_value <= 0){
-        printf("Failed on function 'charAt', index is out of bounds (0), at line %d\n", index->current_line);
         ast_var->string_value[0] = 'N';
         ast_var->string_value[1] = 'U';
         ast_var->string_value[2] = 'L';
@@ -533,7 +573,6 @@ AST_T* builtin_function_char_at(Visitor_T* visitor, AST_T** args, int args_size)
         return ast_var;
     };
     if ((size_t)index->number_value > strlen(stringg->string_value)){
-        printf("Failed on function 'charAt', index is out of bounds (1), at line %d\n", index->current_line);
         ast_var->string_value[0] = 'N';
         ast_var->string_value[1] = 'U';
         ast_var->string_value[2] = 'L';
@@ -564,7 +603,18 @@ AST_T* builtin_function_str_edit(Visitor_T* visitor, AST_T** args, int args_size
     if (str == NULL || str->type != AST_STRING) {
         printf("Tripped on function 'stredit', type of argument 1 expects a string but did not receive one (at line %d)\n", str->current_line);
         exit(1);
-    }
+    };
+
+    if (args[0]->type == AST_VARIABLE) {
+        AST_T* variable = Scope_Get_Variable_Definition(args[0]->scope, args[0]->variable_name);
+
+        if (variable->variable_const == true) {
+            free(variable);
+            printf("Tripped on function 'stredit', type of argument 1 is a const (at line %d)\n", str->current_line);
+            exit(1);
+        }
+        free(variable);
+    };
     if (index == NULL || index->type == AST_NOOP) {
         printf("Tripped on function 'stredit', type of argument 2 expects a number but did not receive one (at line %d)\n", index->current_line);
         exit(1);
@@ -649,6 +699,7 @@ AST_T* builtin_function_for_each(Visitor_T* visitor, AST_T** args, int args_size
         free(evaluated_args);
         Visitor_Visit(visitor, fdef->function_definition_body);
         visitor->returning = 0;
+        visitor->breaking = false;
 
         call_scope->variable_definitions_size = saved_scope_size;
     };

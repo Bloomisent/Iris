@@ -65,7 +65,7 @@ func start() {
 
     var name =  promptDialog("Adventurer... what is your name? ");
 
-    ifelse (name == "Will") {
+    if (name == "Will") {
         print("Will, huh...%nIt's been a while, hasn't it...%n");
     } else {
         print("What a beautiful name, new one. %n");
@@ -74,7 +74,7 @@ func start() {
     var sword_name = promptDialog(name + ", what shall your sword be called? ");
     wpn.name = sword_name;
 
-    ifelse (sword_name == "Doom") {
+    if (sword_name == "Doom") {
         print("Doom... You have a rather great taste in name, ", name, "%n");
     } else {
         print("What a great name, ", name, "%n");

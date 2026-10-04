@@ -43,10 +43,6 @@ char* join_path(const char* base_dir, const char* relative_path){
     return result;
 };
 
-static Scope_T* Get_Node_Scope(Parser_T* Parser, AST_T* Node) {
-    return Node->scope == (void*)0 ? Parser->Scope : Node->scope;
-}
-
 Parser_T* Init_Parser(Lexer_T* Lexer){
     Parser_T* parser = calloc(1, sizeof(struct PARSER_STRUCT));
     parser->lexer = Lexer;
@@ -128,6 +124,29 @@ AST_T* Parser_Parse_Statement(Parser_T* Parser, Scope_T* Scope){
                 Parser_Eat(Parser, TOKEN_EQUALS);
                 AST_T* value = Parser_Parse_Expr(Parser, Scope);
                 value->current_line = Parser->current_token->line;
+
+                AST_T* assignment = Init_AST(AST_ASSIGNMENT);
+                assignment->current_line = Parser->current_token->line;
+                assignment->assignment_target = expr;
+                assignment->assignment_value = value;
+                assignment->scope = Scope;
+                return assignment;
+            } else if (Parser->current_token->type == TOKEN_NULLADD) {
+                if (expr->type != AST_DOT && expr->type != AST_VARIABLE) {
+                    printf("Tripped on assignment, left-hand side must be a member access (obj > \"key\") or a variable (at line %d)\n", Parser->current_token->line);
+                    exit(1);
+                };
+
+                Parser_Eat(Parser, TOKEN_NULLADD);
+                AST_T* right = Parser_Parse_Additive(Parser, Scope);
+                right->current_line = Parser->current_token->line;
+
+                AST_T* value = Init_AST(AST_BINOP);
+                value->current_line = Parser->current_token->line;
+                value->binop_left = expr;
+                value->binop_op = TOKEN_NULLADD;
+                value->binop_right = right;
+                value->scope = Scope;
 
                 AST_T* assignment = Init_AST(AST_ASSIGNMENT);
                 assignment->current_line = Parser->current_token->line;
@@ -381,9 +400,10 @@ AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope){
             Parser_Eat(Parser, TOKEN_RPAREN);
             return node;
         }
-        case TOKEN_STRING: AST_T* nodee = Parser_Parse_String(Parser, Scope); nodee->current_line = Parser->current_token->line; return nodee; break;
-        case TOKEN_NUMBER: AST_T* nodeee = Parser_Parse_Number(Parser, Scope); nodeee->current_line = Parser->current_token->line; return nodeee; break;
-        case TOKEN_ID: AST_T* nodeeee = Parser_Parse_Id(Parser, Scope); nodeeee->current_line = Parser->current_token->line; return nodeeee; break;
+        case TOKEN_TERNARY: AST_T* nodee = Parser_Parse_Ternary(Parser, Scope); nodee->current_line = Parser->current_token->line; return nodee; break;
+        case TOKEN_STRING: AST_T* nodeee = Parser_Parse_String(Parser, Scope); nodeee->current_line = Parser->current_token->line; return nodeee; break;
+        case TOKEN_NUMBER: AST_T* nodeeee = Parser_Parse_Number(Parser, Scope); nodeeee->current_line = Parser->current_token->line; return nodeeee; break;
+        case TOKEN_ID: AST_T* nodeeeee = Parser_Parse_Id(Parser, Scope); nodeeeee->current_line = Parser->current_token->line; return nodeeeee; break;
         default:
             printf("Tripped on factor, unexpected token type %d, at line %d\n", Parser->current_token->type, Parser->current_token->line);
             exit(1);
@@ -491,9 +511,27 @@ AST_T* Parser_Parse_Variable_Definition(Parser_T* Parser, Scope_T* Scope) {
     variable_def->current_line = Parser->current_token->line;
     variable_def->variable_definition_variable_name = variable_def_name;
     variable_def->variable_definition_value = variable_def_val;
+    variable_def->variable_const = false;
 
     variable_def->scope=Scope;
     return variable_def;
+};
+AST_T* Parser_Parse_Const_Variable_Definition(Parser_T* Parser, Scope_T* Scope) {
+    Parser_Eat(Parser, TOKEN_ID); // const
+    char* const_def_name = Parser->current_token->value;
+    Parser_Eat(Parser, TOKEN_ID); // const name
+    Parser_Eat(Parser, TOKEN_EQUALS); // equals sign
+
+    AST_T* const_def_val = Parser_Parse_Expr(Parser, Scope);
+    AST_T* const_def = Init_AST(AST_VARIABLE_DEFINITION);
+    const_def_val->current_line = Parser->current_token->line;
+    const_def->current_line = Parser->current_token->line;
+    const_def->variable_definition_variable_name = const_def_name;
+    const_def->variable_definition_value = const_def_val;
+    const_def->variable_const = true;
+
+    const_def->scope=Scope;
+    return const_def;
 };
 AST_T* Parser_Parse_Variable(Parser_T* Parser, Scope_T* Scope){
     char* token_value = Parser->current_token->value;
@@ -527,18 +565,24 @@ AST_T* Parser_Parse_Table_Definition(Parser_T* Parser, Scope_T* Scope) {
         Parser_Eat(Parser, TOKEN_LSQUARE); // square bracket
 
         table_def->table_definition_value = calloc(1, sizeof(struct AST_STRUCT*));
-        table_def->table_definition_value[0] = Parser_Parse_Expr(Parser, Scope);
         table_def->table_size = 1;
+        if (Parser->current_token->type == TOKEN_RSQUARE) {
+            AST_T* null_var = Init_AST(AST_NULL);
+            null_var->scope = table_def->scope;
+            table_def->table_definition_value[0] = null_var;
+        } else {
+            table_def->table_definition_value[0] = Parser_Parse_Expr(Parser, Scope);
 
-        while (Parser->current_token->type == TOKEN_COMMA) {
-            Parser_Eat(Parser, TOKEN_COMMA);
-            table_def->table_size += 1;
-            table_def->table_definition_value = realloc(
-                table_def->table_definition_value,
-                table_def->table_size * sizeof(struct AST_STRUCT*)
-            );
-            table_def->table_definition_value[table_def->table_size - 1] = Parser_Parse_Expr(Parser, Scope);
-        }
+            while (Parser->current_token->type == TOKEN_COMMA) {
+                Parser_Eat(Parser, TOKEN_COMMA);
+                table_def->table_size += 1;
+                table_def->table_definition_value = realloc(
+                    table_def->table_definition_value,
+                    table_def->table_size * sizeof(struct AST_STRUCT*)
+                );
+                table_def->table_definition_value[table_def->table_size - 1] = Parser_Parse_Expr(Parser, Scope);
+            }
+        };
 
         Parser_Eat(Parser, TOKEN_RSQUARE); // square bracket
 
@@ -877,6 +921,84 @@ AST_T* Parser_Parse_Function_Call(Parser_T* Parser, Scope_T* Scope){
     return function_call;
 };
 
+AST_T* Parser_Parse_Enum(Parser_T* Parser, Scope_T* Scope) {
+    AST_T* ast = Init_AST(AST_ENUM);
+    ast->current_line = Parser->current_token->line;
+    Parser_Eat(Parser, TOKEN_ID); // enum
+    Parser_Eat(Parser, TOKEN_LCURLY);
+
+    AST_T* ast_enum_val = Init_AST(AST_NUMBER); //Parser_Parse_Expr(Parser, Scope);
+    ast_enum_val->scope = Scope;
+    ast_enum_val->number_value = 1.0f;
+    ast_enum_val->current_line = Parser->current_token->line;
+
+    AST_T* ast_enum = Init_AST(AST_VARIABLE_DEFINITION);
+    ast_enum->scope = Scope;
+    ast_enum->current_line = Parser->current_token->line;
+    ast_enum->variable_definition_variable_name = Parser->current_token->value;
+    ast_enum->variable_definition_value = ast_enum_val;
+    ast_enum->variable_const = true;
+
+    Parser_Eat(Parser, TOKEN_ID);
+
+    ast->enum_body = calloc(1, sizeof(struct AST_STRUCT*));
+    ast->enum_body_size = 1;
+
+    ast->enum_body[0] = ast_enum;
+
+    int e = 1;
+
+    while (Parser->current_token->type == TOKEN_COMMA) {
+        int lin = Parser->current_token->line;
+        Parser_Eat(Parser, TOKEN_COMMA);
+
+        if (Parser->current_token->type != TOKEN_ID) {
+            printf("Tripped on enum, trailing comma (at line %d)\n", lin);
+            exit(1);
+        }
+
+        ast->enum_body_size += 1;
+        ast->enum_body = realloc(ast->enum_body, ast->enum_body_size * sizeof(struct AST_STRUCT*));
+
+        AST_T* ast_enum_val2 = Init_AST(AST_NUMBER); //Parser_Parse_Expr(Parser, Scope);
+        ast_enum_val2->scope = Scope;
+        ast_enum_val2->number_value = (float)e;
+        ast_enum_val2->current_line = Parser->current_token->line;
+
+        AST_T* ast_enum2 = Init_AST(AST_VARIABLE_DEFINITION);
+        ast_enum2->scope = Scope;
+        ast_enum2->current_line = Parser->current_token->line;
+        ast_enum2->variable_definition_variable_name = Parser->current_token->value;
+        ast_enum2->variable_definition_value = ast_enum_val2;
+        ast_enum2->variable_const = true;
+
+        Parser_Eat(Parser, TOKEN_ID);
+
+        ast->enum_body[e] = ast_enum2;
+        e++;
+    }
+
+    Parser_Eat(Parser, TOKEN_RCURLY);
+    return ast;
+};
+
+AST_T* Parser_Parse_Ternary(Parser_T* Parser, Scope_T* Scope) {
+    AST_T* ast = Init_AST(AST_TERNARY);
+    ast->current_line = Parser->current_token->line;
+    Parser_Eat(Parser, TOKEN_TERNARY); // tertiary
+
+    Parser_Eat(Parser, TOKEN_LPAREN);
+    ast->ternary_condition = Parser_Parse_Expr(Parser, Scope);
+    Parser_Eat(Parser, TOKEN_RPAREN);
+
+    ast->ternary_success_var = Parser_Parse_Expr(Parser, Scope);
+
+    Parser_Eat(Parser, TOKEN_COLON);
+
+    ast->ternary_failure_var = Parser_Parse_Expr(Parser, Scope);
+    return ast;
+};
+
 AST_T* Parser_Parse_If(Parser_T* Parser, Scope_T* Scope) {
     AST_T* ast = Init_AST(AST_IF);
     ast->current_line = Parser->current_token->line;
@@ -891,13 +1013,71 @@ AST_T* Parser_Parse_If(Parser_T* Parser, Scope_T* Scope) {
     ast->if_body = Parser_Parse_Statements(Parser, Scope);
 
     Parser_Eat(Parser, TOKEN_RCURLY); // if compound
+
+    int i = 0;
+    bool alloced = false;
+
+    while (Parser->current_token->type == TOKEN_ID) {
+        int lin = Parser->current_token->line;
+        bool iselse = false;
+        if (Parser->current_token->type != TOKEN_ID) {
+            printf("Tripped on if statement, trailing comma (at line %d)\n", lin);
+            exit(1);
+        }
+
+        if (strcmp(Parser->current_token->value, "else") == 0) {
+            iselse = true;
+            Parser_Eat(Parser, TOKEN_ID);
+            if (strcmp(Parser->current_token->value, "if") == 0) {
+                iselse = false;
+                Parser_Eat(Parser, TOKEN_ID);
+            };
+        } else {
+            break;
+        };
+
+        if (iselse == false) {
+            Parser_Eat(Parser, TOKEN_LPAREN);
+
+            if (alloced) {
+                ast->else_if_size += 1;
+                ast->else_if_conditions = realloc(ast->else_if_conditions, ast->else_if_size * sizeof(struct AST_STRUCT*));
+                ast->else_if_bodies = realloc(ast->else_if_bodies, ast->else_if_size * sizeof(struct AST_STRUCT*));
+            } else {
+                alloced = true;
+                ast->else_if_size = 1;
+                ast->else_if_conditions = calloc(1, sizeof(struct AST_STRUCT*));
+                ast->else_if_bodies = calloc(1, sizeof(struct AST_STRUCT*));
+            }
+            AST_T* ast_condition = Parser_Parse_Expr(Parser, Scope);
+            Parser_Eat(Parser, TOKEN_RPAREN);
+            Parser_Eat(Parser, TOKEN_LCURLY);
+
+            AST_T* ast_body = Parser_Parse_Statements(Parser, Scope);
+
+            Parser_Eat(Parser, TOKEN_RCURLY);
+
+            ast->else_if_conditions[i] = ast_condition;
+            ast->else_if_bodies[i] = ast_body;
+            i++;
+        } else {
+            Parser_Eat(Parser, TOKEN_LCURLY);
+            AST_T* ast_body = Parser_Parse_Statements(Parser, Scope);
+            Parser_Eat(Parser, TOKEN_RCURLY);
+
+            ast->if_else_body = ast_body;
+            break;
+        }
+    };
     return ast;
 };
-AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope) {
+AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope) { //deprecated
     AST_T* ast = Init_AST(AST_IF_ELSE);
     ast->current_line = Parser->current_token->line;
     Parser_Eat(Parser, TOKEN_ID); // if
     Parser_Eat(Parser, TOKEN_LPAREN);
+
+    printf("Please note that in v3.1, ifelse will be deprecated (at line %d)\n", ast->current_line);
 
     ast->if_condition = Parser_Parse_Expr(Parser, Scope);
 
@@ -913,7 +1093,7 @@ AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope) {
         exit(1);
     };
     if (strcmp(Parser->current_token->value, "else")) {
-        printf("Else not found in ifelse statement (around line %d)\n", ast->current_line);
+        printf("Else not found in ifelse statement (at line %d)\n", ast->current_line);
         exit(1);
     };
 
@@ -1036,6 +1216,13 @@ AST_T* Parser_Parse_Return(Parser_T* Parser, Scope_T* Scope) {
     ast->scope = Scope;
     return ast;
 };
+AST_T* Parser_Parse_Break(Parser_T* Parser, Scope_T* Scope) {
+    Parser_Eat(Parser, TOKEN_ID); // break
+    AST_T* ast = Init_AST(AST_BREAK);
+    ast->current_line = Parser->current_token->line;
+    ast->scope = Scope;
+    return ast;
+};
 
 AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
     Parser_Eat(Parser, TOKEN_ID);
@@ -1141,16 +1328,22 @@ AST_T* Parser_Parse_Id(Parser_T* Parser, Scope_T* Scope){
         return Parser_Parse_Dictionary_Definition(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "var") == 0) {
         return Parser_Parse_Variable_Definition(Parser, Scope);
+    } else if (strcmp(Parser->current_token->value, "const") == 0) {
+        return Parser_Parse_Const_Variable_Definition(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "func") == 0) {
         return Parser_Parse_Function_Definition(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "for") == 0) {
         return Parser_Parse_For(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "while") == 0) {
         return Parser_Parse_While(Parser, Scope);
+    } else if (strcmp(Parser->current_token->value, "enum") == 0) {
+        return Parser_Parse_Enum(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "if") == 0) {
         return Parser_Parse_If(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "ifelse") == 0) {
         return Parser_Parse_If_Else(Parser, Scope);
+    } else if (strcmp(Parser->current_token->value, "break") == 0) {
+        return Parser_Parse_Break(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "return") == 0) {
         return Parser_Parse_Return(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "include") == 0) {

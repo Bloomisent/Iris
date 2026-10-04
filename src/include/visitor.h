@@ -3,6 +3,7 @@
 #include "AST.h"
 
 typedef struct VISITOR_STRUCT {
+    bool breaking;
     int returning;
     int call_depth;
 } Visitor_T;
@@ -29,6 +30,8 @@ While_Tuple* Init_While_Tuple();
 AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Variable_Definition(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Variable(Visitor_T* visitor, AST_T* node);
+AST_T* VV_Enum(Visitor_T* visitor, AST_T* node);
+AST_T* VV_Ternary(Visitor_T* visitor, AST_T* node);
 AST_T* VV_If(Visitor_T* visitor, AST_T* node);
 AST_T* VV_If_Else(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Checks(Visitor_T* visitor, AST_T* node);
@@ -38,6 +41,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Unary_Not(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Arrow(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Dot(Visitor_T* visitor, AST_T* node);
+AST_T* VV_Break(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Return(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Class_Instantiation(Visitor_T* visitor, AST_T* node);

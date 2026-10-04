@@ -1,8 +1,0 @@
-
-func tappend(target_table, target_size, copied_table, copied_size) {
-    var i = copied_size + 1;
-    var max = target_size + copied_size;
-    for (i: i <= max: "++"){
-        table_set_index(target_table, i, table_get_from_index(copied_table, i-copied_size));
-    };
-};

@@ -13,7 +13,7 @@ int current_col = 1;
 Scope_T* g_iris_gc_root_scope = NULL;
 char* g_iris_library_dir;
 
-char version[] = "v3.0.6";
+char version[] = "v3.0.9";
 
 char* read_file_to_string(const char *filename) {
     FILE *file = fopen(filename, "rb");

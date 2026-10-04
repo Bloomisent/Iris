@@ -42,6 +42,7 @@ While_Tuple* get_while_data(Visitor_T* visitor, AST_T* node) {
 Visitor_T* Init_Visitor(){
     Visitor_T* visitor = calloc(1, sizeof(struct VISITOR_STRUCT));
     visitor->returning = 0;
+    visitor->breaking = false;
     visitor->call_depth = 0;
     return visitor;
 };
@@ -66,6 +67,8 @@ AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node){
         case AST_DICTIONARY_DEFINITION: return VV_Dict_Definition(visitor, node); break;
         case AST_CLASS_DEFINITION: return VV_Class_Definition(visitor, node); break;
         case AST_FUNCTION_DEFINITION: return VV_Function_Definition(visitor, node); break;
+        case AST_ENUM: return VV_Enum(visitor, node); break;
+        case AST_TERNARY: return VV_Ternary(visitor, node); break;
         case AST_IF: return VV_If(visitor, node); break;
         case AST_IF_ELSE: return VV_If_Else(visitor, node); break;
         case AST_CHECKS: return VV_Checks(visitor, node); break;
@@ -73,6 +76,7 @@ AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node){
         case AST_WHILE: return VV_While(visitor, node); break;
         case AST_BINOP: return VV_BinOp(visitor, node); break;
         case AST_DOT: return VV_Dot(visitor, node); break;
+        case AST_BREAK: return VV_Break(visitor, node); break;
         case AST_RETURN: return VV_Return(visitor, node); break;
         case AST_ASSIGNMENT: return VV_Assignment(visitor, node); break;
         case AST_CLASS_INSTANTIATION: return VV_Class_Instantiation(visitor, node); break;
@@ -101,6 +105,7 @@ AST_T* VV_Variable_Definition(Visitor_T* visitor, AST_T* node) {
     AST_T* vdef = Init_AST(AST_VARIABLE_DEFINITION);
     vdef->variable_definition_variable_name = node->variable_definition_variable_name;
     vdef->variable_definition_value = evaluated_value;
+    vdef->variable_const = node->variable_const;
     vdef->scope = node->scope;
 
     Scope_Add_Variable_Definition(node->scope, vdef);
@@ -130,6 +135,41 @@ AST_T* VV_Variable(Visitor_T* visitor, AST_T* node) {
     }
     return node;
 };
+AST_T* VV_Enum(Visitor_T* visitor, AST_T* node) {
+    AST_T** enums = node->enum_body;
+
+    for (size_t x = 0; x<=(int)(node->enum_body_size-1); x++){
+        AST_T* enumn = enums[x];
+        AST_T* evaluated_value = Visitor_Visit(visitor, enumn->variable_definition_value);
+
+        AST_T* vdef = Init_AST(AST_VARIABLE_DEFINITION);
+        vdef->variable_definition_variable_name = enumn->variable_definition_variable_name;
+        vdef->variable_definition_value = evaluated_value;
+        vdef->variable_const = true;
+        vdef->scope = node->scope;
+
+        Scope_Add_Variable_Definition(node->scope, vdef);
+    };
+    return Init_AST(AST_NOOP);
+};
+AST_T* VV_Ternary(Visitor_T* visitor, AST_T* node) {
+    AST_T* condition_result = Visitor_Visit(visitor, node->ternary_condition);
+
+    int is_truthy = 0;
+    switch (condition_result->type) {
+        case AST_NUMBER: is_truthy = (condition_result->number_value != 0.0f); break;
+        case AST_STRING:  is_truthy = (condition_result->string_value != (void*)0 &&
+                                        strlen(condition_result->string_value) > 0); break;
+        case AST_BOOL:  is_truthy = (condition_result->bool_value != false); break;
+        case AST_NULL: is_truthy = (condition_result->type == AST_NULL); break;
+        default: is_truthy = 0; break;
+    }
+
+    if (is_truthy) {
+        return Visitor_Visit(visitor, node->ternary_success_var);
+    }
+    return Visitor_Visit(visitor, node->ternary_failure_var);
+};
 AST_T* VV_If(Visitor_T* visitor, AST_T* node) {
     AST_T* condition_result = Visitor_Visit(visitor, node->if_condition);
 
@@ -145,8 +185,30 @@ AST_T* VV_If(Visitor_T* visitor, AST_T* node) {
 
     if (is_truthy) {
         return Visitor_Visit(visitor, node->if_body);
+    } else {
+        for (int x=0; x<node->else_if_size; x++){
+            AST_T* cond_res = Visitor_Visit(visitor, node->else_if_conditions[x]);
+
+            int is_truth = 0;
+            switch (condition_result->type) {
+                case AST_NUMBER: is_truthy = (cond_res->number_value != 0.0f); break;
+                case AST_STRING:  is_truthy = (cond_res->string_value != (void*)0 &&
+                                                strlen(cond_res->string_value) > 0); break;
+                case AST_BOOL:  is_truthy = (cond_res->bool_value != false); break;
+                case AST_NULL: is_truthy = (cond_res->type == AST_NULL); break;
+                default: is_truthy = 0; break;
+            }
+
+            if (is_truth){
+                return Visitor_Visit(visitor, node->else_if_bodies[x]);
+            }
+        };
     }
-    return Init_AST(AST_NOOP);
+    if (node->if_else_body != (void*)0 && node->if_else_body != NULL){
+        return Visitor_Visit(visitor, node->if_else_body);
+    } else {
+        return Init_AST(AST_NOOP);
+    };
 };
 AST_T* VV_If_Else(Visitor_T* visitor, AST_T* node) {
     AST_T* condition_result = Visitor_Visit(visitor, node->if_condition);
@@ -252,7 +314,7 @@ AST_T* VV_For(Visitor_T* visitor, AST_T* node) {
     AST_T* last_var = Init_AST(AST_NOOP);
     while (condition_true()) {
         last_var = Visitor_Visit(visitor, node->for_body);
-        if (visitor->returning) {
+        if (visitor->returning || visitor->breaking) {
             break;
         }
         counter += minus ? -1.0f : 1.0f;
@@ -281,7 +343,7 @@ AST_T* VV_While(Visitor_T* visitor, AST_T* node) {
 
     while (get_res() == true) {
         last_var = Visitor_Visit(visitor, node->while_body);
-        if (visitor->returning) {
+        if (visitor->returning || visitor->breaking) {
             break; // a 'return' fired inside the loop body -- stop iterating
         }
     };
@@ -315,6 +377,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
         if (left->type != right->type) {
             printf("Tripped on comparison, incomparable types (%d, %d) (at line %d)\n", left->type, right->type, node->current_line);
             exit(1);
+
         }
 
         AST_T* result = Init_AST(AST_BOOL);
@@ -328,7 +391,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                                           right->string_value != (void*)0 &&
                                           strcmp(left->string_value, right->string_value) == 0); break;
                 case AST_BOOL:   equal = (left->bool_value == right->bool_value); break;
-                case AST_NULL:   equal = (left->type == AST_NULL); break;
+                case AST_NULL:   equal = (right->type == AST_NULL); break;
                 default:
                     printf("Tripped on comparison, unsupported type %d for equality (at line %d)\n", left->type, node->current_line);
                     exit(1);
@@ -350,6 +413,60 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
         return result;
     };
 
+    if (node->binop_op == TOKEN_ADD || node->binop_op == TOKEN_SUB || node->binop_op == TOKEN_DIV || node->binop_op == TOKEN_MULT) {
+        if (node->binop_left->variable_const == true){
+            printf("Tripped on binary operation, variable is a constant, at line %d\n", node->current_line);
+            exit(1);
+        };
+        if (left->variable_const == true){
+            printf("Tripped on binary operation, variable is a constant, at line %d\n", node->current_line);
+            exit(1);
+        };
+    };
+
+    if (node->binop_op == TOKEN_NULLADD) {
+        AST_T* result = NULL;
+        if (left->type != AST_NULL){
+            result = Init_AST(left->type);
+            switch (left->type) {
+                case AST_NUMBER:{
+                    result = Init_AST(AST_NUMBER);
+                    result->number_value = left->number_value;
+                    break;
+                };
+                case AST_STRING:{
+                    result = Init_AST(AST_STRING);
+                    strcpy(result->string_value, left->string_value);
+                    break;
+                };
+                case AST_BOOL:{
+                    result = Init_AST(AST_BOOL);
+                    result->bool_value = left->bool_value;
+                    break;
+                };
+            };
+        } else {
+            switch (right->type) {
+                case AST_NUMBER:{
+                    result = Init_AST(AST_NUMBER);
+                    result->number_value = right->number_value;
+                    break;
+                };
+                case AST_STRING:{
+                    result = Init_AST(AST_STRING);
+                    strcpy(result->string_value, right->string_value);
+                    break;
+                };
+                case AST_BOOL:{
+                    result = Init_AST(AST_BOOL);
+                    result->bool_value = right->bool_value;
+                    break;
+                };
+            };
+        };
+        return result;
+    };
+
     if (left->type == AST_NUMBER && right->type == AST_NUMBER) {
         AST_T* result = Init_AST(AST_NUMBER);
         result->number_value = 0;
@@ -364,7 +481,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                 }
                 result->number_value = left->number_value / right->number_value;
                 break;
-            case TOKEN_ADD:  result->number_value = left->number_value + right->number_value; break;
+            case TOKEN_ADD: result->number_value = left->number_value + right->number_value; break;
             case TOKEN_SUB: result->number_value = left->number_value - right->number_value; break;
             case TOKEN_MULT:   result->number_value = left->number_value * right->number_value; break;
             case TOKEN_DIV:
@@ -450,6 +567,7 @@ AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
 };
 AST_T* VV_Class_Instantiation(Visitor_T* visitor, AST_T* node) {
     AST_T* template_def = Scope_Get_Class_Definition(node->scope, node->instance_class_name);
+
     if (template_def == (void*)0) {
         printf("Tripped on class instantiation, undefined class '%s', at line %d\n", node->instance_class_name, node->current_line);
         exit(1);
@@ -508,14 +626,12 @@ AST_T* VV_Init_Call(Visitor_T* visitor, AST_T* node) {
     Scope_T* call_scope = instance->scope;
     size_t saved_scope_size = call_scope->variable_definitions_size;
 
-    // First declared parameter is 'self' by convention -- bind it to the instance itself.
     AST_T* self_param = instance->init_args[0];
     AST_T* self_vdef = Init_AST(AST_VARIABLE_DEFINITION);
     self_vdef->variable_definition_variable_name = self_param->variable_name;
     self_vdef->variable_definition_value = instance;
     Scope_Add_Variable_Definition(call_scope, self_vdef);
 
-    // Remaining declared parameters bind to the evaluated call arguments, in order.
     for (size_t i = 1; i < declared_param_count; i++) {
         AST_T* param = instance->init_args[i];
         AST_T* arg_expr = node->function_call_arguments[i - 1];
@@ -529,6 +645,7 @@ AST_T* VV_Init_Call(Visitor_T* visitor, AST_T* node) {
 
     AST_T* result = Visitor_Visit(visitor, instance->init_value);
     visitor->returning = 0;
+    visitor->breaking = 0;
 
     call_scope->variable_definitions_size = saved_scope_size;
 
@@ -539,15 +656,30 @@ AST_T* VV_Return(Visitor_T* visitor, AST_T* node) {
     visitor->returning = 1;
     return result;
 };
+AST_T* VV_Break(Visitor_T* visitor, AST_T* node) {
+    visitor->breaking = true;
+    return Init_AST(AST_NOOP);
+};
 AST_T* VV_Assignment(Visitor_T* visitor, AST_T* node) {
     AST_T* target = node->assignment_target; // raw AST_DOT: unevaluated so we can reach its left/right
 
     if (target->type == AST_VARIABLE) {
-        AST_T* value = Visitor_Visit(visitor, node->assignment_value);
+
         AST_T* variable = Scope_Get_Variable_Definition(target->scope, target->variable_name);
 
         if (variable == NULL){
             printf("Tripped on assignment, unknown variable '%s', at line %d\n", target->variable_name, node->current_line);
+            exit(1);
+        };
+
+        if (target->variable_const == true || variable->variable_const == true) {
+            printf("Tripped on assignment, variable '%s' is a constant, at line %d\n", target->variable_name, node->current_line);
+            exit(1);
+        }
+
+        AST_T* value = Visitor_Visit(visitor, node->assignment_value);
+        if (value->variable_const == true){
+            printf("Tripped on assignment, variable '%s' is a constant, at line %d\n", target->variable_name, node->current_line);
             exit(1);
         };
 
@@ -719,6 +851,7 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
 
         AST_T* result = Visitor_Visit(visitor, fdef->function_definition_body);
         visitor->returning = 0;
+        visitor->breaking = false;
 
         call_scope->variable_definitions_size = saved_scope_size;
 
@@ -789,6 +922,9 @@ AST_T* VV_Compound(Visitor_T* visitor, AST_T* node) {
         result = Visitor_Visit(visitor, node->compound_value[i]);
         if (visitor->returning) {
             return result;   // a return fired somewhere in this statement (directly or nested in if/ifelse) - stop
+        }
+        if (visitor->breaking){
+            break;
         }
     };
     return Init_AST(AST_NOOP);

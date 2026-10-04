@@ -92,7 +92,6 @@ static AST_T* require_string(Visitor_T* visitor, AST_T* arg, const char* fn, int
 }
 
 AST_T* builtin_function_window_width(Visitor_T* visitor, AST_T** args, int args_size) {
-    RECT rect;
     int width = g_iris_window_width;
 
     AST_T* ast = Init_AST(AST_NUMBER);
@@ -101,7 +100,6 @@ AST_T* builtin_function_window_width(Visitor_T* visitor, AST_T** args, int args_
 }
 
 AST_T* builtin_function_window_height(Visitor_T* visitor, AST_T** args, int args_size) {
-    RECT rect;
     int height = g_iris_window_height;
 
     AST_T* ast = Init_AST(AST_NUMBER);

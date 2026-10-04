@@ -9,6 +9,7 @@ typedef enum {
     AST_DICTIONARY_DEFINITION,
     AST_CLASS_DEFINITION,
     AST_FUNCTION_DEFINITION,
+    AST_ENUM,
     AST_IF,
     AST_IF_ELSE,
     AST_FOR,
@@ -25,9 +26,11 @@ typedef enum {
     AST_STRING,
     AST_NUMBER,
     AST_BOOL,
+    AST_BREAK,
     AST_RETURN,
     AST_COMPOUND,
     AST_ASSIGNMENT,
+    AST_TERNARY,
     AST_CHECKS,
     AST_CLASS_INSTANTIATION,
     AST_INIT_CALL,
@@ -44,6 +47,7 @@ typedef struct AST_STRUCT {
     char* variable_definition_variable_name;
     struct AST_STRUCT* variable_definition_value;
     char* variable_name;
+    bool variable_const;
 
     struct AST_STRUCT* function_definition_body;
     char* function_definition_name;
@@ -56,8 +60,20 @@ typedef struct AST_STRUCT {
     struct AST_STRUCT** function_call_arguments;
     size_t function_call_arguments_size;
 
+    struct AST_STRUCT** enum_body;
+    size_t enum_body_size;
+
+    struct AST_STRUCT* ternary_condition;
+    struct AST_STRUCT* ternary_success_var;
+    struct AST_STRUCT* ternary_failure_var;
+
     struct AST_STRUCT* if_condition;
     struct AST_STRUCT* if_body;
+
+    struct AST_STRUCT** else_if_conditions;
+    struct AST_STRUCT** else_if_bodies;
+    size_t else_if_size;
+
     struct AST_STRUCT* if_else_body;
 
     struct AST_STRUCT* checks_base_var; //var to be checked

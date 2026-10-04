@@ -79,12 +79,8 @@ func uiButtonClicked(btn) {
     var down = windowMousePressed();
     var clicked = 0;
 
-    if (hovered == 1) {
-        if (down == 1) {
-            if (btn.wasPressed == 0) {
-                clicked = 1;
-            };
-        };
+    if (hovered == 1 && down == 1 && btn.wasPressed == 0) {
+        clicked = 1;
     };
 
     btn.wasPressed = down;

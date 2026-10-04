@@ -28,6 +28,8 @@ typedef enum {
     TOKEN_NOT, //comparison
     TOKEN_DOT,
     TOKEN_ADD,
+    TOKEN_NULLADD,
+    TOKEN_TERNARY,
     TOKEN_SUB,
     TOKEN_MULT,
     TOKEN_DIV,

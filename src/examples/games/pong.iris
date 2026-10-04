@@ -174,7 +174,7 @@ func start() {
         if (checkRectIntersection(plr, circle_hitbox)){
             base = 0.125;
             opp_track = true;
-            ifelse (plr.y >= circle.y){
+            if (plr.y >= circle.y){
                 offset = plr.y - circle.y;
             } else {
                 offset = circle.y - plr.y;
@@ -187,7 +187,7 @@ func start() {
         if (checkRectIntersection(opp, circle_hitbox)){
             base = -0.125;
             opp_track = false;
-            ifelse (opp.y >= circle.y){
+            if (opp.y >= circle.y){
                 offset = opp.y - circle.y;
             } else {
                 offset = circle.y - opp.y;
