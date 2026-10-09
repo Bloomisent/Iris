@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
-project(Iris VERSION 2.0 LANGUAGES CXX)
+project(Iris VERSION 2.0 LANGUAGES C)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROJECT_SOURCES
     src/main.c
@@ -16,4 +16,4 @@ set(PROJECT_SOURCES
 )
 
 add_executable(Iris ${PROJECT_SOURCES})
-target_include_directories(Iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(Iris PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}src/include)
