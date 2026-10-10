@@ -303,6 +303,7 @@ AST_T* builtin_function_window_present(Visitor_T* visitor, AST_T** args, int arg
         BitBlt(screen_dc, 0, 0, g_iris_window_width, g_iris_window_height, g_iris_backbuffer_dc, 0, 0, SRCCOPY);
         ReleaseDC(g_iris_window, screen_dc);
     };
+    Sleep(16);
     return Init_AST(AST_NOOP);
 };
 
