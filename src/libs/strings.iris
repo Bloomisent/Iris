@@ -46,3 +46,11 @@ func strfind(string, substring) {
     return 0 - 1;
 };
 
+func strfindc(str, charToFind) {
+    for (var i = 0 : i <= strlen(str) : "++") {
+        var c = charAt(str, i);
+        if (c == "") { break; };
+        if (c == charToFind) { return true; };
+    };
+    return false;
+};

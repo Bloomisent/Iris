@@ -1,0 +1,26 @@
+include <standard>;
+include "fibonacci.iris";
+
+var array = DynamicArray_Create();
+DynamicArray_Add(array, "yes");
+DynamicArray_Add(array, "no");
+DynamicArray_Add(array, "maybe");
+
+print(array.contents, "%n");
+print(array.length, "%n");
+print(DynamicArray_Contents(array), "%n");
+print(DynamicArray_Length(array), "%n%n");
+
+print(chars_fromASCII("126"), "%n");
+
+#exit();#
+
+print("hi%n");
+
+#for (var x = 0: x<=600000:"++"){# # testing speed #
+#    const x = fib(x+1);#
+#    print(x);#
+#};#
+
+print(strfind("fart", "fart"), "%n");
+print(sin(14));

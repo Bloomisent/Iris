@@ -38,10 +38,10 @@ typedef enum {
     TOKEN_COLON,
     TOKEN_LSQUARE,
     TOKEN_RSQUARE
-} TokenType;
+} TType;
 
 typedef struct TOKEN_STRUCT {
-    TokenType type;
+    TType type;
     char* value;
     size_t position;
     int line;

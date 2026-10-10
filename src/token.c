@@ -7,7 +7,7 @@ Token_T* Init_Token(int type, const char* value) {
     Token_T* t = calloc(1, sizeof *t);
     if (!t) exit(EXIT_FAILURE);
 
-    t->type = (TokenType)type;
+    t->type = (TType)type;
 
     size_t n = value ? strlen(value) : 0;
     t->value = malloc(n + 1);

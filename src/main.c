@@ -2,10 +2,34 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "include/lexer.h"
 #include "include/parser.h"
 #include "include/visitor.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#else
+#include <unistd.h>
+#endif
+
+char* exe_directory(const char* argv0) {
+    char buf[4096];
+#ifdef _WIN32
+    DWORD n = GetModuleFileNameA(NULL, buf, sizeof buf);
+    if (n > 0 && n < sizeof buf) return get_directory(buf);
+#elif defined(__APPLE__)
+    uint32_t sz = sizeof buf;
+    if (_NSGetExecutablePath(buf, &sz) == 0) return get_directory(buf);
+#else
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof buf - 1);
+    if (n > 0) { buf[n] = '\0'; return get_directory(buf); }
+#endif
+    return get_directory(argv0);   /* last-resort fallback */
+}
 
 int current_line = 1;
 int current_col = 1;
@@ -13,7 +37,7 @@ int current_col = 1;
 Scope_T* g_iris_gc_root_scope = NULL;
 char* g_iris_library_dir;
 
-char version[] = "v3.0.9";
+char version[] = "v3.1.0";
 
 char* read_file_to_string(const char *filename) {
     FILE *file = fopen(filename, "rb");
@@ -57,7 +81,7 @@ bool ends_with(const char *str, const char *suffix) {
 
 int main(int argc, char *argv[]) {
 
-    g_iris_library_dir = join_path(get_directory(argv[0]), "src\\libs\\");
+    g_iris_library_dir = join_path(exe_directory(argv[0]), "src/libs/");
 
     if (argc < 2) {
         printf("You did not input a path.\n");

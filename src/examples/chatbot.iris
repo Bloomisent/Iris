@@ -1,0 +1,466 @@
+# ===================================================================== #
+# chatbot.iris - a rule-based chatbot written in Iris #
+# ===================================================================== #
+# Iris chats with you in the terminal. It can:                          #
+#   - say hello, ask how you are, tell jokes                            #
+#   - remember your name ("my name is ...")                             #
+#   - do simple maths ("12 + 5", "7 times 8", "100 divided by 4")       #
+#   - LEARN: if it has no answer, it asks what to say and remembers it  #
+# Run it with:   iris chatbot.iris                                      #
+# It needs no other files. Say "bye" to leave.                          #
+# ===================================================================== #
+
+# ------------------------- random numbers ---------------------------- #
+# Iris has no random(), so this is a tiny generator (see ai.iris). #
+var rng_state = 4242;
+func rand() {
+    rng_state = (75 * (rng_state + 1)) % 65537 - 1;
+    return rng_state / 65536;
+};
+
+func pick(count) {
+    return floor(rand() * count, 1);
+};
+
+func pick2(a, b) {
+    if (pick(2) == 0) { return a; };
+    return b;
+};
+
+func pick3(a, b, c) {
+    var r = pick(3);
+    if (r == 0) { return a; };
+    if (r == 1) { return b; };
+    return c;
+};
+
+func pick4(a, b, c, d) {
+    var r = pick(4);
+    if (r == 0) { return a; };
+    if (r == 1) { return b; };
+    if (r == 2) { return c; };
+    return d;
+};
+
+# ------------------------- string helpers ---------------------------- #
+# Iris has no built-in length, so count characters with ForEach. #
+var tick_count = 0;
+func tick() {
+    tick_count += 1;
+};
+
+func len(s) {
+    tick_count = 0;
+    ForEach(s, "tick");
+    return tick_count;
+};
+
+var UP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+var LO = "abcdefghijklmnopqrstuvwxyz";
+var DIGITS = "0123456789";
+
+# Position (1 to setlen) of ch inside set, or 0 if it is not there. #
+func index_in(set, setlen, ch) {
+    var j = 1;
+    var found = 0;
+    while (j <= setlen && found == 0) {
+        if (charAt(set, j) == ch) { found = j; };
+        j += 1;
+    };
+    return found;
+};
+
+func lower(ch) {
+    var k = index_in(UP, 26, ch);
+    if (k > 0) { return charAt(LO, k); };
+    return ch;
+};
+
+# 1 letter, 2 digit, 3 operator, 4 apostrophe, 5 full stop, 0 anything else #
+func kind_of(ch) {
+    if (index_in(LO, 26, ch) > 0) { return 1; };
+    if (index_in(DIGITS, 10, ch) > 0) { return 2; };
+    if (ch == "+" || ch == "-" || ch == "*" || ch == "/") { return 3; };
+    if (ch == "'") { return 4; };
+    if (ch == ".") { return 5; };
+    return 0;
+};
+
+func capitalize(w) {
+    var n = len(w);
+    if (n == 0) { return w; };
+    var first = charAt(w, 1);
+    var k = index_in(LO, 26, first);
+    var out = first;
+    if (k > 0) { out = charAt(UP, k); };
+    var i = 2;
+    while (i <= n) {
+        out = out + charAt(w, i);
+        i += 1;
+    };
+    return out;
+};
+
+# ---------------------- turning a sentence into words ---------------- #
+# "Hello, WORLD!" becomes the words: hello world #
+table words = [""];
+var word_count = 0;
+var cur_word = "";
+
+func add_word(w) {
+    if (word_count < 40) {
+        word_count += 1;
+        table_set_index(words, word_count, w);
+    };
+};
+
+func flush_word() {
+    if (cur_word != "") {
+        add_word(cur_word);
+        cur_word = "";
+    };
+};
+
+func tokenize(raw) {
+    word_count = 0;
+    cur_word = "";
+    var n = len(raw);
+    var i = 1;
+    var ch = "";
+    var kind = 0;
+    var keep = 0;
+    var pk = 0;
+    var nk = 0;
+    while (i <= n) {
+        ch = lower(charAt(raw, i));
+        kind = kind_of(ch);
+        if (kind == 1 || kind == 2) { cur_word = cur_word + ch; };
+        if (kind == 3) { flush_word(); add_word(ch); };
+        if (kind == 0) { flush_word(); };
+        if (kind == 4 || kind == 5) {
+            keep = 0;
+            if (i > 1 && i < n) {
+                pk = kind_of(lower(charAt(raw, i - 1)));
+                nk = kind_of(lower(charAt(raw, i + 1)));
+                if (kind == 4 && pk == 1 && nk == 1) { keep = 1; };
+                if (kind == 5 && pk == 2 && nk == 2) { keep = 1; };
+            };
+            if (keep == 1) { cur_word = cur_word + ch; } else { flush_word(); };
+        };
+        i += 1;
+    };
+    flush_word();
+};
+
+func word_at(i) {
+    if (i >= 1 && i <= word_count) { return table_get_from_index(words, i); };
+    return "";
+};
+
+# Is the single word w in the sentence? #
+func has(w) {
+    var i = 1;
+    var found = 0;
+    while (i <= word_count && found == 0) {
+        if (word_at(i) == w) { found = 1; };
+        i += 1;
+    };
+    return found;
+};
+
+# Do the words a and b appear next to each other, in that order? #
+func has_pair(a, b) {
+    var i = 1;
+    var found = 0;
+    while (i < word_count && found == 0) {
+        if (word_at(i) == a && word_at(i + 1) == b) { found = 1; };
+        i += 1;
+    };
+    return found;
+};
+
+# --------------------------- talking --------------------------------- #
+func say(text) {
+    print("Iris> ", text, "%n");
+};
+
+var user_name = "";
+
+# Looks for "name is X" or "call me X" and returns X (or an empty string). #
+func find_name() {
+    var i = 1;
+    var got = "";
+    while (i <= word_count && got == "") {
+        if (word_at(i) == "name" && word_at(i + 1) == "is") { got = word_at(i + 2); };
+        if (word_at(i) == "call" && word_at(i + 1) == "me") { got = word_at(i + 2); };
+        i += 1;
+    };
+    return got;
+};
+
+# ------------------------------ maths -------------------------------- #
+func is_number(w) {
+    var n = len(w);
+    if (n == 0) { return 0; };
+    var i = 1;
+    var ok = 1;
+    var kd = 0;
+    while (i <= n && ok == 1) {
+        kd = kind_of(charAt(w, i));
+        if (kd != 2 && kd != 5) { ok = 0; };
+        i += 1;
+    };
+    return ok;
+};
+
+# If the sentence contains  number operator number  answer it. Returns 1 if it did. #
+func try_math() {
+    var i = 1;
+    var done = 0;
+    var op = "";
+    var bpos = 0;
+    var sym = "";
+    var x = 0;
+    var y = 0;
+    var r = 0;
+    while (i + 2 <= word_count && done == 0) {
+        if (is_number(word_at(i)) == 1) {
+            op = word_at(i + 1);
+            bpos = i + 2;
+            if (op == "divided" && word_at(i + 2) == "by") { bpos = i + 3; };
+            if (is_number(word_at(bpos)) == 1) {
+                sym = "";
+                if (op == "+" || op == "plus") { sym = "+"; };
+                if (op == "-" || op == "minus") { sym = "-"; };
+                if (op == "*" || op == "times" || op == "x") { sym = "*"; };
+                if (op == "/" || op == "divided" || op == "over") { sym = "/"; };
+                if (sym != "") {
+                    done = 1;
+                    x = toNumber(word_at(i));
+                    y = toNumber(word_at(bpos));
+                    if (sym == "/" && y == 0) {
+                        say("I can't divide by zero. It breaks maths.");
+                    } else {
+                        if (sym == "+") { r = x + y; };
+                        if (sym == "-") { r = x - y; };
+                        if (sym == "*") { r = x * y; };
+                        if (sym == "/") { r = x / y; };
+                        print("Iris> ", x, sym, " ", y, "= ", r, "%n");
+                    };
+                };
+            };
+        };
+        i += 1;
+    };
+    return done;
+};
+
+# ----------------------- what it has been taught --------------------- #
+table learn_keys = [""];
+table learn_vals = [""];
+var learn_count = 0;
+
+func sentence_key() {
+    var i = 1;
+    var key = "";
+    while (i <= word_count) {
+        if (i > 1) { key = key + " "; };
+        key = key + word_at(i);
+        i += 1;
+    };
+    return key;
+};
+
+
+func teach(key, answer) {
+    var found = find_learned(key);
+
+    if (found > 0) {
+        table_set_index(learn_vals, found, answer);
+    } else {
+        learn_count += 1;
+        table_set_index(learn_keys, learn_count, key);
+        table_set_index(learn_vals, learn_count, answer);
+    };
+
+    save_memory();
+};
+
+func find_learned(key) {
+    var i = 1;
+
+    while (i <= learn_count) {
+        if (table_get_from_index(learn_keys, i) == key) {
+            return i;
+        };
+
+        i += 1;
+    };
+
+    return 0;
+};
+
+# ---------------------- persistent learning -------------------------- #
+
+var memory_file = "chatbot_memory.txt";
+
+func save_memory() {
+    var i = 1;
+    var data = "";
+
+    while (i <= learn_count) {
+        data = data
+            + table_get_from_index(learn_keys, i)
+            + "\n"
+            + table_get_from_index(learn_vals, i)
+            + "\n";
+
+        i += 1;
+    };
+
+    writeFile(memory_file, data, false);
+};
+
+func load_memory() {
+    var data = readFile(memory_file);
+
+    # Parse the file into question/answer pairs here. #
+    # The exact implementation depends on Iris's string and file APIs. #
+};
+
+
+# ----------------------------- the brain ----------------------------- #
+func show_help() {
+    say("Here is what I can do:");
+    print("   - chat: say hello, ask how I am, ask who I am%n");
+    print("   - remember you: tell me  my name is ...  and I will use it%n");
+    print("   - maths: try  12 + 5   or  7 times 8   or  100 divided by 4%n");
+    print("   - jokes: ask me for a joke%n");
+    print("   - learn: if I have no answer I will ask what to say, and remember it%n");
+    print("   - leave: say bye%n");
+};
+
+# Works out a reply to one line of text. Returns 1 to keep chatting, 0 to stop. #
+func respond(raw) {
+    tokenize(raw);
+    if (word_count == 0) {
+        say("I could not make out any words in that. Try again?");
+        return 1;
+    };
+
+    var key = sentence_key();
+    var learned = find_learned(key);
+    if (learned > 0) {
+        say(table_get_from_index(learn_vals, learned));
+        return 1;
+    };
+
+    if (has("bye") || has("goodbye") || has_pair("see", "you") || (word_count <= 2 && (has("quit") || has("exit")))) {
+        if (user_name != "") {
+            say("Goodbye, " + user_name + "! Talk soon.");
+        } else {
+            say("Goodbye! Talk soon.");
+        };
+        return 0;
+    };
+
+    var nm = find_name();
+    if (nm != "") {
+        user_name = capitalize(nm);
+        say(pick3("Nice to meet you, " + user_name + "!", "Hello " + user_name + ", good to meet you.", "Great name, " + user_name + "!"));
+        return 1;
+    };
+    if (has_pair("my", "name")) {
+        if (user_name != "") {
+            say("You told me your name is " + user_name + ".");
+        } else {
+            say("I do not know yet. What is your name?");
+        };
+        return 1;
+    };
+
+    if (try_math() == 1) { return 1; };
+
+    if (has("help") || has("commands") || has_pair("what", "can")) {
+        show_help();
+        return 1;
+    };
+    if (has("joke") || has("funny")) {
+        say(pick4("Why do programmers prefer dark mode? Because light attracts bugs.", "There are 10 kinds of people: those who understand binary and those who do not.", "My code does not have bugs. It has surprise features.", "A SQL query walks into a bar, sees two tables and asks: can I join you?"));
+        return 1;
+    };
+    if (has("thanks") || has("thank") || has("thx")) {
+        say(pick3("You are welcome!", "Any time.", "Happy to help."));
+        return 1;
+    };
+    if (has_pair("who", "are") || has_pair("your", "name") || has_pair("what", "are")) {
+        say("I am Iris, a chatbot written entirely in Iris, the language you are running me with.");
+        return 1;
+    };
+    if (has_pair("who", "made") || has_pair("who", "wrote") || has_pair("who", "built") || has_pair("who", "created")) {
+        say("I was written in Iris. Whoever is running me can take the credit.");
+        return 1;
+    };
+    if (has_pair("how", "are") || has("hows") || has("how's")) {
+        say(pick3("I am doing well, thanks for asking. How are you?", "Pretty good for a bunch of rules! How about you?", "All systems running. And you?"));
+        return 1;
+    };
+    if (has("hello") || has("hi") || has("hey") || has("hiya") || has("yo") || has("greetings") || has_pair("good", "morning") || has_pair("good", "evening")) {
+        if (user_name != "") {
+            say(pick2("Hello again, " + user_name + "!", "Hey " + user_name + "! Good to see you."));
+        } else {
+            say(pick3("Hello!", "Hey there!", "Hi! What is your name?"));
+        };
+        return 1;
+    };
+    if (has("sad") || has("tired") || has("bored") || has("lonely") || has("angry") || has("stressed")) {
+        say(pick3("I am sorry to hear that. Want to talk about it?", "That sounds rough. I am here to chat.", "Hang in there. Tell me more?"));
+        return 1;
+    };
+    if (has("happy") || has("great") || has("awesome") || has("good") || has("fine") || has("excited")) {
+        say(pick3("Glad to hear it!", "That is great news.", "Nice! Tell me more."));
+        return 1;
+    };
+    if (has("weather")) {
+        say("I live in a terminal. It is always sunny in here.");
+        return 1;
+    };
+
+    say(pick3("I do not know how to answer that yet.", "Hmm, I am not sure what to say to that.", "I have not learned that one yet."));
+    print("Iris> What should I say when someone tells me that? (press Enter to skip)%n");
+    var taught = input("Teach> ", false);
+    if (taught != "") {
+        teach(key, taught);
+        say("Learned! I will save that answer.");
+    };
+    return 1;
+};
+
+# ----------------------------- main loop ----------------------------- #
+func chat() {
+    load_memory();
+    var running = 1;
+    var empties = 0;
+    var turns = 0;
+    var raw = "";
+    say("Hi, I am Iris, a chatbot written in Iris. Type help to see what I can do, or bye to leave.");
+    while (running == 1 && turns < 500) {
+        turns += 1;
+        raw = input("You> ", false);
+        if (raw == "") {
+            empties += 1;
+            if (empties >= 3) {
+                running = 0;
+                say("Nobody is there, so I will go. Bye!");
+            } else {
+                say("Say something and I will answer.");
+            };
+        } else {
+            empties = 0;
+            rng_state = (rng_state + len(raw) * 31 + 1) % 65536;
+            running = respond(raw);
+        };
+    };
+};
+
+chat();

@@ -1,3 +1,6 @@
+const PI = 3.14159265358979323846;
+const pi = 3.14159265358979323846;
+
 func abs(n) {
     if (n < 0) {
         return 0 - n;
@@ -84,4 +87,56 @@ func sum(t, size) {
 
 func average(t, size) {
     return sum(t, size) / size;
+};
+
+func reduce_range(x) {
+    var two_pi = pi * 2;
+    var quotients = x / two_pi;
+    x = x - (quotients * two_pi);
+
+    if (x > pi) {
+        x -= two_pi;
+    } else if (x < -pi) {
+        x += two_pi;
+    };
+    return x;
+};
+
+func sin(x) {
+    x = reduce_range(x);
+
+    var term = x;
+    var sum = x;
+    var x_squared = x * x;
+
+    for (var i = 3: i <= 31: "--") {
+        term = -term * x_squared / (i * (i - 1));
+        sum += term;
+        i += 3;
+    };
+
+    return sum;
+};
+
+func cos(x) {
+    x = reduce_range(x);
+
+    var term = 1.0;
+    var sum = 1.0;
+    var x_squared = x * x;
+
+    for (var i = 2: i <= 30: "--") {
+        term = -term * x_squared / (i * (i - 1));
+        sum += term;
+        i += 3;
+    };
+    return sum;
+};
+
+func tan(x) {
+    var c = cos(x);
+    if (c == 0) {
+        return 0;
+    };
+    return (sin(x) / c);
 };

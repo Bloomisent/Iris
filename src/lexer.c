@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "include/lexer.h"
 
@@ -466,7 +467,6 @@ Token_T* Lexer_Get_Next_Token(Lexer_T* lexer) {
                     Lexer_Advance(lexer);
                     return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_NULLADD, "?="));
                 }
-                Lexer_Advance(lexer);
                 return Lexer_Advance_With_Token(lexer, Init_Token(TOKEN_TERNARY, "?"));
             case '=':
                 if (Lexer_Peek(lexer) == '=') {

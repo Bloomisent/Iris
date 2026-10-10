@@ -11,6 +11,8 @@ typedef struct PARSER_STRUCT {
     Token_T* previous_token;
     Scope_T* Scope;
 
+    int id;
+
     char** table_names;
     size_t table_names_size;
 
@@ -54,7 +56,6 @@ AST_T* Parser_Parse_Function_Call(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Enum(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Ternary(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_If(Parser_T* Parser, Scope_T* Scope);
-AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Checks(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_Case(Parser_T* Parser, Scope_T* Scope);
 AST_T* Parser_Parse_For(Parser_T* Parser, Scope_T* Scope);

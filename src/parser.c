@@ -14,6 +14,8 @@ extern char* g_iris_library_dir;
 extern int current_line;
 extern int current_col;
 
+int available_id = 0;
+
 char* get_directory(const char* path){
     const char* last_slash = strrchr(path, '/');
     const char* last_backslash = strrchr(path, '\\');
@@ -46,6 +48,7 @@ char* join_path(const char* base_dir, const char* relative_path){
 Parser_T* Init_Parser(Lexer_T* Lexer){
     Parser_T* parser = calloc(1, sizeof(struct PARSER_STRUCT));
     parser->lexer = Lexer;
+    parser->id = available_id;
     parser->current_token = Lexer_Get_Next_Token(Lexer);
     parser->previous_token = parser->current_token;
     parser->Scope = Init_Scope();
@@ -57,6 +60,7 @@ Parser_T* Init_Parser(Lexer_T* Lexer){
     parser->class_names_size = 0;
     parser->included_paths = (void*)0;
     parser->included_paths_size = 0;
+    available_id++;
     return parser;
 };
 
@@ -95,7 +99,7 @@ void Parser_Eat(Parser_T* Parser, int token_type){
     };
 };
 
-AST_T* Parser_Parse(Parser_T* Parser, Scope_T* Scope){ // main entry, return AST syntax tree
+AST_T* Parser_Parse(Parser_T* Parser, Scope_T* Scope){
     AST_T* result = Parser_Parse_Statements(Parser, Scope);
 
     if (Parser->current_token->type != TOKEN_EOF) {
@@ -316,7 +320,7 @@ AST_T* Parser_Parse_Logic_And(Parser_T* Parser, Scope_T* Scope){
     };
     return node;
 };
-AST_T* Parser_Parse_Comparison(Parser_T* Parser, Scope_T* Scope){   // this is your OLD Parser_Parse_Expr body, renamed, untouched otherwise
+AST_T* Parser_Parse_Comparison(Parser_T* Parser, Scope_T* Scope){
     AST_T* node = Parser_Parse_Additive(Parser, Scope);
     node->current_line = Parser->current_token->line;
     while (Parser->current_token->type == TOKEN_GT ||
@@ -392,18 +396,19 @@ AST_T* Parser_Parse_Factor(Parser_T* Parser, Scope_T* Scope){
         binop->scope = Scope;
         return binop;
     };
+    AST_T* node = NULL;
     switch (Parser->current_token->type){
         case TOKEN_LPAREN: {
             Parser_Eat(Parser, TOKEN_LPAREN);
-            AST_T* node = Parser_Parse_Expr(Parser, Scope);
+            node = Parser_Parse_Expr(Parser, Scope);
             node->current_line = Parser->current_token->line;
             Parser_Eat(Parser, TOKEN_RPAREN);
             return node;
         }
-        case TOKEN_TERNARY: AST_T* nodee = Parser_Parse_Ternary(Parser, Scope); nodee->current_line = Parser->current_token->line; return nodee; break;
-        case TOKEN_STRING: AST_T* nodeee = Parser_Parse_String(Parser, Scope); nodeee->current_line = Parser->current_token->line; return nodeee; break;
-        case TOKEN_NUMBER: AST_T* nodeeee = Parser_Parse_Number(Parser, Scope); nodeeee->current_line = Parser->current_token->line; return nodeeee; break;
-        case TOKEN_ID: AST_T* nodeeeee = Parser_Parse_Id(Parser, Scope); nodeeeee->current_line = Parser->current_token->line; return nodeeeee; break;
+        case TOKEN_TERNARY: node = Parser_Parse_Ternary(Parser, Scope); node->current_line = Parser->current_token->line; return node; break;
+        case TOKEN_STRING: node = Parser_Parse_String(Parser, Scope); node->current_line = Parser->current_token->line; return node; break;
+        case TOKEN_NUMBER: node = Parser_Parse_Number(Parser, Scope); node->current_line = Parser->current_token->line; return node; break;
+        case TOKEN_ID: node = Parser_Parse_Id(Parser, Scope); node->current_line = Parser->current_token->line; return node; break;
         default:
             printf("Tripped on factor, unexpected token type %d, at line %d\n", Parser->current_token->type, Parser->current_token->line);
             exit(1);
@@ -498,7 +503,6 @@ AST_T* Parser_Parse_Term(Parser_T* Parser, Scope_T* Scope){
 
     return node;
 };
-
 AST_T* Parser_Parse_Variable_Definition(Parser_T* Parser, Scope_T* Scope) {
     Parser_Eat(Parser, TOKEN_ID); // variable
     char* variable_def_name = Parser->current_token->value;
@@ -751,8 +755,7 @@ AST_T* Parser_Parse_Class_Definition(Parser_T* Parser, Scope_T* Scope) {
     class_def->class_definition_value_name = calloc(1, sizeof(struct AST_STRUCT*));
     class_def->class_size = 0;
 
-    int first_is_init = (strcmp(Parser->current_token->value, "init") == 0);
-    if (first_is_init) {
+    if (strcmp(Parser->current_token->value, "init") == 0) {
         Parser_Parse_Class_Init(Parser, Scope, class_def);
     } else {
         class_def->class_definition_value_name[0] = Parser_Parse_String(Parser, Scope);
@@ -834,15 +837,30 @@ AST_T* Parser_Parse_Class(Parser_T* Parser, Scope_T* Scope){
 AST_T* Parser_Parse_Function_Definition(Parser_T* Parser, Scope_T* Scope) {
     AST_T* ast = Init_AST(AST_FUNCTION_DEFINITION);
     ast->current_line = Parser->current_token->line;
+    ast->file_id = Parser->id;
+
     Parser_Eat(Parser, TOKEN_ID); // function
+
+    bool pub = true;
+    if (strcmp(Parser->current_token->value, "public") == 0){
+        pub = true;
+        Parser_Eat(Parser, TOKEN_ID);
+    } else if (strcmp(Parser->current_token->value, "private") == 0){
+        pub = false;
+        Parser_Eat(Parser, TOKEN_ID);
+    };
+
     char* func_name = Parser->current_token->value;
     ast->function_definition_name = calloc(
         strlen(func_name)+1,
         sizeof(char)
     );
     strcpy(ast->function_definition_name, func_name);
+
     Parser_Eat(Parser, TOKEN_ID); // function name
     Parser_Eat(Parser, TOKEN_LPAREN);
+
+    ast->function_definition_public = pub;
 
     if (Parser->current_token->type != TOKEN_RPAREN) {
 
@@ -888,6 +906,7 @@ AST_T* Parser_Parse_Function_Call(Parser_T* Parser, Scope_T* Scope){
     AST_T* function_call = Init_AST(AST_FUNCTION_CALL);
     function_call->current_line = Parser->current_token->line;
     function_call->function_call_name = Parser->previous_token->value;
+    function_call->file_id = Parser->id;
     Parser_Eat(Parser, TOKEN_LPAREN);
 
     function_call->function_call_arguments = NULL;
@@ -1071,42 +1090,6 @@ AST_T* Parser_Parse_If(Parser_T* Parser, Scope_T* Scope) {
     };
     return ast;
 };
-AST_T* Parser_Parse_If_Else(Parser_T* Parser, Scope_T* Scope) { //deprecated
-    AST_T* ast = Init_AST(AST_IF_ELSE);
-    ast->current_line = Parser->current_token->line;
-    Parser_Eat(Parser, TOKEN_ID); // if
-    Parser_Eat(Parser, TOKEN_LPAREN);
-
-    printf("Please note that in v3.1, ifelse will be deprecated (at line %d)\n", ast->current_line);
-
-    ast->if_condition = Parser_Parse_Expr(Parser, Scope);
-
-    Parser_Eat(Parser, TOKEN_RPAREN);
-    Parser_Eat(Parser, TOKEN_LCURLY); // if compound
-
-    ast->if_body = Parser_Parse_Statements(Parser, Scope);
-
-    Parser_Eat(Parser, TOKEN_RCURLY); // if compound
-
-    if (Parser->current_token->type != TOKEN_ID) {
-        printf("Missing 'else' in ifelse statement (at line %d)\n", ast->current_line);
-        exit(1);
-    };
-    if (strcmp(Parser->current_token->value, "else")) {
-        printf("Else not found in ifelse statement (at line %d)\n", ast->current_line);
-        exit(1);
-    };
-
-    Parser_Eat(Parser, TOKEN_ID); // else
-
-    Parser_Eat(Parser, TOKEN_LCURLY);
-
-    ast->if_else_body = Parser_Parse_Statements(Parser, Scope);
-
-    Parser_Eat(Parser, TOKEN_RCURLY); // else compound
-    return ast;
-};
-
 AST_T* Parser_Parse_Checks(Parser_T* Parser, Scope_T* Scope) {
     AST_T* ast = Init_AST(AST_CHECKS);
     ast->current_line = Parser->current_token->line;
@@ -1181,8 +1164,11 @@ AST_T* Parser_Parse_For(Parser_T* Parser, Scope_T* Scope) {
     ast->for_condition = Parser_Parse_Expr(Parser, Scope);
     Parser_Eat(Parser, TOKEN_COLON);
 
-    ast->for_does_at_end = Parser_Parse_Expr(Parser, Scope);
-
+    if (Parser->current_token->type == TOKEN_STRING) {
+        ast->for_does_at_end = Parser_Parse_Expr(Parser, Scope);
+    } else {
+        ast->for_does_at_end = Parser_Parse_Statement(Parser, Scope);
+    };
     Parser_Eat(Parser, TOKEN_RPAREN);
     Parser_Eat(Parser, TOKEN_LCURLY);
 
@@ -1227,6 +1213,7 @@ AST_T* Parser_Parse_Break(Parser_T* Parser, Scope_T* Scope) {
 AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
     Parser_Eat(Parser, TOKEN_ID);
 
+    char* file_path;
     char* requested_path;
     char* path;
 
@@ -1237,11 +1224,15 @@ AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
         Parser_Eat(Parser, TOKEN_GT);
 
         char* filename = malloc(strlen(libname) + strlen(".iris") + 1);
+        file_path = malloc(strlen(libname) + strlen(".iris") + 1);
         sprintf(filename, "%s.iris", libname);
+        sprintf(file_path, filename);
         requested_path = join_path(g_iris_library_dir, filename);
         free(filename);
     } else {
         AST_T* path_node = Parser_Parse_String(Parser, Scope);
+        file_path = malloc(strlen(path_node->string_value) + 1);
+        sprintf(file_path, path_node->string_value);
         requested_path = join_path(Parser->current_dir, path_node->string_value);
     };
     path = requested_path;
@@ -1260,7 +1251,7 @@ AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
 
     char* contents = read_file_to_string(path);
     if (contents == (void*)0) {
-        printf("Tripped on include, could not read file '%s' (at line %d)\n", path, Parser->current_token->line);
+        printf("Tripped on include, could not read file '%s' (at line %d)\n", file_path, Parser->current_token->line);
         exit(1);
     }
 
@@ -1269,24 +1260,29 @@ AST_T* Parser_Parse_Include(Parser_T* Parser, Scope_T* Scope) {
     Token_T* saved_previous = Parser->previous_token;
     int saved_line = Parser->current_token->line;
     int saved_col = Parser->current_token->col;
+    int saved_id = Parser->id;
     char* saved_path = Parser->current_dir;
 
     Lexer_T* include_lexer = Init_Lexer(contents);
     Parser->lexer = include_lexer;
+    Parser->id = available_id;
     current_line = 1;
     current_col = 1;
     Parser->current_token = Lexer_Get_Next_Token(include_lexer);
     Parser->previous_token = Parser->current_token;
     Parser->current_dir = get_directory(path);
 
+    available_id++;
+
     AST_T* included_statements = Parser_Parse_Statements(Parser, Scope);
 
     if (Parser->current_token->type != TOKEN_EOF) {
-        printf("Tripped on include, unexpected trailing token in included file '%s', at line %d\n", path, Parser->current_token->line);
+        printf("Tripped on include, unexpected trailing token in included file '%s', at line %d\n", file_path, Parser->current_token->line);
         exit(1);
     };
 
     Parser->lexer = saved_lexer;
+    Parser->id = saved_id;
     current_line = saved_line;
     current_col = saved_col;
     Parser->current_token = saved_current;
@@ -1309,7 +1305,7 @@ AST_T* Parser_Parse_String(Parser_T* Parser, Scope_T* Scope){
 };
 AST_T* Parser_Parse_Number(Parser_T* Parser, Scope_T* Scope){
     AST_T* ast_number = Init_AST(AST_NUMBER);
-    ast_number->number_value = strtof(Parser->current_token->value, NULL);
+    ast_number->number_value = strtod(Parser->current_token->value, NULL);
     ast_number->current_line = Parser->current_token->line;
 
     Parser_Eat(Parser, TOKEN_NUMBER);
@@ -1340,8 +1336,6 @@ AST_T* Parser_Parse_Id(Parser_T* Parser, Scope_T* Scope){
         return Parser_Parse_Enum(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "if") == 0) {
         return Parser_Parse_If(Parser, Scope);
-    } else if (strcmp(Parser->current_token->value, "ifelse") == 0) {
-        return Parser_Parse_If_Else(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "break") == 0) {
         return Parser_Parse_Break(Parser, Scope);
     } else if (strcmp(Parser->current_token->value, "return") == 0) {

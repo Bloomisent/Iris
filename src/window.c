@@ -27,12 +27,29 @@ static LRESULT CALLBACK Iris_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
     switch (msg) {
         case WM_CLOSE:
             DestroyWindow(hwnd);
-            break;
+            return 0;
+        case WM_ERASEBKGND:
+            return 1; /* back buffer covers everything; erasing causes flicker */
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+            if (g_iris_backbuffer_dc) {
+                BitBlt(hdc,
+                       ps.rcPaint.left, ps.rcPaint.top,
+                       ps.rcPaint.right - ps.rcPaint.left,
+                       ps.rcPaint.bottom - ps.rcPaint.top,
+                       g_iris_backbuffer_dc,
+                       ps.rcPaint.left, ps.rcPaint.top,
+                       SRCCOPY);
+            }
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
         case WM_SIZE: {
             int new_width = LOWORD(lparam);
             int new_height = HIWORD(lparam);
 
-            if (new_width > 0 && new_height > 0) {
+            if (new_width > 0 && new_height > 0 && g_iris_backbuffer_dc) {
                 g_iris_window_width = new_width;
                 g_iris_window_height = new_height;
 
@@ -45,17 +62,19 @@ static LRESULT CALLBACK Iris_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
                 g_iris_backbuffer_bitmap = CreateCompatibleBitmap(screen_dc, g_iris_window_width, g_iris_window_height);
                 g_iris_backbuffer_old_bitmap = (HBITMAP)SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_bitmap);
                 ReleaseDC(hwnd, screen_dc);
+                InvalidateRect(hwnd, NULL, FALSE);
             }
             return 0;
         }
         case WM_DESTROY:
-            if (g_iris_backbuffer_bitmap) {
-                SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_old_bitmap);
-                DeleteObject(g_iris_backbuffer_bitmap);
-            }
             if (g_iris_backbuffer_dc) {
+                SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_old_bitmap);
+                if (g_iris_backbuffer_bitmap) DeleteObject(g_iris_backbuffer_bitmap);
                 DeleteDC(g_iris_backbuffer_dc);
             }
+            g_iris_backbuffer_dc = NULL;
+            g_iris_backbuffer_bitmap = NULL;
+            g_iris_window = NULL;
             g_iris_should_close = 1;
             PostQuitMessage(0);
             return 0;
@@ -125,7 +144,7 @@ AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args
     wc.hInstance = GetModuleHandle(NULL);
     wc.lpszClassName = "IrisWindowClass";
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = NULL;
     RegisterClassA(&wc);
 
     RECT rect;
@@ -197,7 +216,10 @@ AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int ar
     }
 
     AST_T* result = Init_AST(AST_NUMBER);
-    result->number_value = GetTickCount64();
+    LARGE_INTEGER f, c;
+    QueryPerformanceFrequency(&f);
+    QueryPerformanceCounter(&c);
+    result->number_value = (double)c.QuadPart * 1000.0 / (double)f.QuadPart;
     return result;
 };
 
@@ -276,9 +298,11 @@ AST_T* builtin_function_window_present(Visitor_T* visitor, AST_T** args, int arg
         printf("Tripped on function 'windowPresent', expected 0 arguments, got %d\n", args_size);
         exit(1);
     }
-    HDC screen_dc = GetDC(g_iris_window);
-    BitBlt(screen_dc, 0, 0, g_iris_window_width, g_iris_window_height, g_iris_backbuffer_dc, 0, 0, SRCCOPY);
-    ReleaseDC(g_iris_window, screen_dc);
+    if (g_iris_window && g_iris_backbuffer_dc) {
+        HDC screen_dc = GetDC(g_iris_window);
+        BitBlt(screen_dc, 0, 0, g_iris_window_width, g_iris_window_height, g_iris_backbuffer_dc, 0, 0, SRCCOPY);
+        ReleaseDC(g_iris_window, screen_dc);
+    };
     return Init_AST(AST_NOOP);
 };
 
@@ -322,14 +346,8 @@ AST_T* builtin_function_window_key_pressed(Visitor_T* visitor, AST_T** args, int
 };
 
 AST_T* builtin_function_window_close(Visitor_T* visitor, AST_T** args, int args_size) {
-    if (g_iris_backbuffer_dc) {
-        SelectObject(g_iris_backbuffer_dc, g_iris_backbuffer_old_bitmap);
-        DeleteObject(g_iris_backbuffer_bitmap);
-        DeleteDC(g_iris_backbuffer_dc);
-        g_iris_backbuffer_dc = NULL;
-    }
     if (g_iris_window) {
-        DestroyWindow(g_iris_window);
+        DestroyWindow(g_iris_window); /* WM_DESTROY frees the back buffer and nulls the globals */
         g_iris_window = NULL;
     }
     return Init_AST(AST_NOOP);
@@ -348,6 +366,7 @@ AST_T* builtin_function_window_height(Visitor_T* visitor, AST_T** args, int args
 AST_T* builtin_function_window_create(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowCreate"); }
 AST_T* builtin_function_window_get_time(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowGetTime"); };
 AST_T* builtin_function_window_should_close(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowShouldClose"); }
+AST_T* builtin_function_window_wait(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowWait"); };
 AST_T* builtin_function_window_clear(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowClear"); }
 AST_T* builtin_function_window_draw_rect(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowDrawRect"); }
 AST_T* builtin_function_window_draw_text(Visitor_T* visitor, AST_T** args, int args_size) { return window_unsupported("windowDrawText"); }

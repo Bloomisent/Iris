@@ -10,13 +10,13 @@
 #include "include/builtin.h"
 #include "include/token.h"
 
-static int is_truthy(AST_T* var){
+static int is_truthyf(AST_T* var){
     int equal = 0;
     switch (var->type) {
         case AST_NUMBER: equal = (var->number_value != 0); break;
         case AST_STRING: equal = (var->string_value != (void*)0 && var->string_value[0] != '\0'); break;
         case AST_BOOL: equal = (var->bool_value != 0); break;
-        case AST_NULL: equal = (var->type == AST_NULL); break;
+        case AST_NULL: equal = 0; break;
         default:
             printf("Tripped on comparison, unsupported type %d for equality (at line %d)\n", var->type, var->current_line);
             exit(1);
@@ -70,7 +70,6 @@ AST_T* Visitor_Visit(Visitor_T* visitor, AST_T* node){
         case AST_ENUM: return VV_Enum(visitor, node); break;
         case AST_TERNARY: return VV_Ternary(visitor, node); break;
         case AST_IF: return VV_If(visitor, node); break;
-        case AST_IF_ELSE: return VV_If_Else(visitor, node); break;
         case AST_CHECKS: return VV_Checks(visitor, node); break;
         case AST_FOR: return VV_For(visitor, node); break;
         case AST_WHILE: return VV_While(visitor, node); break;
@@ -112,22 +111,21 @@ AST_T* VV_Variable_Definition(Visitor_T* visitor, AST_T* node) {
     return node;
 };
 AST_T* VV_Variable(Visitor_T* visitor, AST_T* node) {
+    AST_T* vdef = Init_AST(AST_BOOL);
+
     if (strcmp(node->variable_name, "true") == 0) {
-        AST_T* vdef = Init_AST(AST_BOOL);
         vdef->bool_value = true;
         return Visitor_Visit(visitor, vdef);
     } else if (strcmp(node->variable_name, "false") == 0) {
-        AST_T* vdef = Init_AST(AST_BOOL);
         vdef->bool_value = false;
         return Visitor_Visit(visitor, vdef);
     } else if (strcmp(node->variable_name, "null") == 0) {
-        AST_T* vdef = Init_AST(AST_NULL);
-        return Visitor_Visit(visitor, vdef);
+        return Init_AST(AST_NULL);
     } else {
-        AST_T* vdef = Scope_Get_Variable_Definition(node->scope, node->variable_name);
+        AST_T* vdef2 = Scope_Get_Variable_Definition(node->scope, node->variable_name);
 
-        if (vdef != (void*)0) {
-            return Visitor_Visit(visitor, vdef->variable_definition_value);
+        if (vdef2 != (void*)0) {
+            return Visitor_Visit(visitor, vdef2->variable_definition_value);
         } else {
             printf("Tripped on undefined variable '%s' (at line %d)\n", node->variable_name, node->current_line);
             exit(1);
@@ -135,6 +133,7 @@ AST_T* VV_Variable(Visitor_T* visitor, AST_T* node) {
     }
     return node;
 };
+
 AST_T* VV_Enum(Visitor_T* visitor, AST_T* node) {
     AST_T** enums = node->enum_body;
 
@@ -161,7 +160,7 @@ AST_T* VV_Ternary(Visitor_T* visitor, AST_T* node) {
         case AST_STRING:  is_truthy = (condition_result->string_value != (void*)0 &&
                                         strlen(condition_result->string_value) > 0); break;
         case AST_BOOL:  is_truthy = (condition_result->bool_value != false); break;
-        case AST_NULL: is_truthy = (condition_result->type == AST_NULL); break;
+        case AST_NULL: is_truthy = 0; break;
         default: is_truthy = 0; break;
     }
 
@@ -179,7 +178,7 @@ AST_T* VV_If(Visitor_T* visitor, AST_T* node) {
         case AST_STRING:  is_truthy = (condition_result->string_value != (void*)0 &&
                                         strlen(condition_result->string_value) > 0); break;
         case AST_BOOL:  is_truthy = (condition_result->bool_value != false); break;
-        case AST_NULL: is_truthy = (condition_result->type == AST_NULL); break;
+        case AST_NULL: is_truthy = 0; break;
         default: is_truthy = 0; break;
     }
 
@@ -190,18 +189,18 @@ AST_T* VV_If(Visitor_T* visitor, AST_T* node) {
             AST_T* cond_res = Visitor_Visit(visitor, node->else_if_conditions[x]);
 
             int is_truth = 0;
-            switch (condition_result->type) {
-                case AST_NUMBER: is_truthy = (cond_res->number_value != 0.0f); break;
-                case AST_STRING:  is_truthy = (cond_res->string_value != (void*)0 &&
+            switch (cond_res->type) {
+                case AST_NUMBER: is_truth = (cond_res->number_value != 0.0f); break;
+                case AST_STRING:  is_truth = (cond_res->string_value != (void*)0 &&
                                                 strlen(cond_res->string_value) > 0); break;
-                case AST_BOOL:  is_truthy = (cond_res->bool_value != false); break;
-                case AST_NULL: is_truthy = (cond_res->type == AST_NULL); break;
+                case AST_BOOL:  is_truth = (cond_res->bool_value != false); break;
+                case AST_NULL: is_truth = 0; break;
                 default: is_truthy = 0; break;
             }
 
             if (is_truth){
                 return Visitor_Visit(visitor, node->else_if_bodies[x]);
-            }
+            };
         };
     }
     if (node->if_else_body != (void*)0 && node->if_else_body != NULL){
@@ -209,24 +208,6 @@ AST_T* VV_If(Visitor_T* visitor, AST_T* node) {
     } else {
         return Init_AST(AST_NOOP);
     };
-};
-AST_T* VV_If_Else(Visitor_T* visitor, AST_T* node) {
-    AST_T* condition_result = Visitor_Visit(visitor, node->if_condition);
-
-    int is_truthy = 0;
-    switch (condition_result->type) {
-        case AST_NUMBER: is_truthy = (condition_result->number_value != 0.0f); break;
-        case AST_STRING:  is_truthy = (condition_result->string_value != (void*)0 &&
-                                        strlen(condition_result->string_value) > 0); break;
-        case AST_BOOL:  is_truthy = (condition_result->bool_value != false); break;
-        case AST_NULL: is_truthy = (condition_result->type == AST_NULL); break;
-        default: is_truthy = 0; break;
-    }
-
-    if (is_truthy) {
-        return Visitor_Visit(visitor, node->if_body);
-    };
-    return Visitor_Visit(visitor, node->if_else_body);
 };
 AST_T* VV_Checks(Visitor_T* visitor, AST_T* node) {
     AST_T* condition_var = Visitor_Visit(visitor, node->checks_base_var);
@@ -254,100 +235,111 @@ AST_T* VV_Checks(Visitor_T* visitor, AST_T* node) {
 
     return Init_AST(AST_NOOP);
 };
+static bool condition_true(Visitor_T* visitor, AST_T* node) {
+    AST_T* cond = Visitor_Visit(visitor, node->for_condition);
+    switch (cond->type) {
+        case AST_NUMBER: return cond->number_value != 0.0f; break;
+        case AST_STRING:  return cond->string_value != (void*)0 && strlen(cond->string_value) > 0; break;
+        case AST_BOOL:    return cond->bool_value != false; break;
+        case AST_NULL:   return 0; break;
+        default: return false;
+    }
+};
+static void set_loop_var(const char* loop_var_name, AST_T* node, float value) {
+    AST_T* vdef = Scope_Get_Variable_Definition(node->scope, loop_var_name);
+    AST_T* num = Init_AST(AST_NUMBER);
+    num->number_value = value;
+    vdef->variable_definition_value = num;
+};
 AST_T* VV_For(Visitor_T* visitor, AST_T* node) {
     char* loop_var_name;
 
     if (node->for_variable->type == AST_VARIABLE_DEFINITION) {
         AST_T* init_result = Visitor_Visit(visitor, node->for_variable);
         loop_var_name = init_result->variable_definition_variable_name;
+        if (node->variable_const) {
+            printf("Tripped on for loop, const variable '%s' used in for loop (at line %d)\n", loop_var_name, node->current_line);
+            exit(1);
+        };
     } else if (node->for_variable->type == AST_VARIABLE) {
         loop_var_name = node->for_variable->variable_name;
-        if (Scope_Get_Variable_Definition(node->scope, loop_var_name) == (void*)0) {
+        AST_T* tmp = Scope_Get_Variable_Definition(node->scope, loop_var_name);
+        if (tmp == (void*)0) {
             printf("Tripped on for loop, undefined variable '%s' (at line %d)\n", loop_var_name, node->current_line);
             exit(1);
-        }
+        };
+        if (tmp->variable_const) {
+            printf("Tripped on for loop, const variable '%s' used in for loop (at line %d)\n", loop_var_name, node->current_line);
+            exit(1);
+        };
     } else {
         printf("Tripped on for loop, loop variable must be a 'var' definition or an existing variable (at line %d)\n", node->current_line);
         exit(1);
     }
 
     AST_T* end_do = Visitor_Visit(visitor, node->for_does_at_end);
-    if (end_do->type != AST_STRING) {
-        printf("Tripped on for loop, unexpected argument types received (at line %d)\n", node->current_line);
-        exit(1);
-    }
 
     bool minus;
-    if (strcmp(end_do->string_value, "++") == 0) {
-        minus = false;
-    } else if (strcmp(end_do->string_value, "--") == 0) {
-        minus = true;
+    bool non = false;
+    if (end_do->type == AST_STRING) {
+        if (strcmp(end_do->string_value, "++") == 0) {
+            minus = false;
+        } else if (strcmp(end_do->string_value, "--") == 0) {
+            minus = true;
+        } else {
+            printf("Tripped on for loop, unknown step operator '%s' (at line %d)\n", end_do->string_value, node->current_line);
+            exit(1);
+        };
     } else {
-        printf("Tripped on for loop, unknown step operator '%s' (at line %d)\n", end_do->string_value, node->current_line);
-        exit(1);
-    }
-
-    bool condition_true() {
-        AST_T* cond = Visitor_Visit(visitor, node->for_condition);
-        switch (cond->type) {
-            case AST_NUMBER: return cond->number_value != 0.0f; break;
-            case AST_STRING:  return cond->string_value != (void*)0 && strlen(cond->string_value) > 0; break;
-            case AST_BOOL:    return cond->bool_value != false; break;
-            case AST_NULL:   return cond->type == AST_NULL; break;
-            default: return false;
-        }
-    };
-
-    void set_loop_var(float value) {
-        AST_T* vdef = Init_AST(AST_VARIABLE_DEFINITION);
-        vdef->variable_definition_variable_name = loop_var_name;
-        AST_T* num = Init_AST(AST_NUMBER);
-        num->number_value = value;
-        vdef->variable_definition_value = num;
-        vdef->scope = node->scope;
-        Scope_Add_Variable_Definition(node->scope, vdef);
+        minus = true;
+        non = true;
     };
 
     AST_T* current = Scope_Get_Variable_Definition(node->scope, loop_var_name);
     float counter = current->variable_definition_value->number_value;
 
     AST_T* last_var = Init_AST(AST_NOOP);
-    while (condition_true()) {
+    while (condition_true(visitor, node)) {
         last_var = Visitor_Visit(visitor, node->for_body);
         if (visitor->returning || visitor->breaking) {
             break;
         }
-        counter += minus ? -1.0f : 1.0f;
-        set_loop_var(counter);
+        if (non) {
+            Visitor_Visit(visitor, node->for_does_at_end);
+        } else {
+            counter += minus ? -1.0f : 1.0f;
+            set_loop_var(loop_var_name, node, counter);
+        };
     };
+
+    visitor->breaking = false;
 
     return last_var;
 };
+static bool get_res_w(Visitor_T* visitor, AST_T* node, While_Tuple* ttt) {
+    static bool is_truthy = false;
+    switch (ttt->condition_result->type) {
+        case AST_NUMBER: is_truthy = (ttt->condition_result->number_value != 0.0f); break;
+        case AST_STRING:  is_truthy = (ttt->condition_result->string_value != (void*)0 &&
+                                        strlen(ttt->condition_result->string_value) > 0); break;
+        case AST_BOOL:  is_truthy = (ttt->condition_result->bool_value != false); break;
+        case AST_NULL: is_truthy = 0; break;
+        default: is_truthy = false; break;
+    };
+    return is_truthy;
+};
 AST_T* VV_While(Visitor_T* visitor, AST_T* node) {
     While_Tuple* ttt = get_while_data(visitor, node);
-
-    bool get_res() {
-        ttt->condition_result = Visitor_Visit(visitor, node->while_condition);
-        bool is_truthy = false;
-        switch (ttt->condition_result->type) {
-            case AST_NUMBER: is_truthy = (ttt->condition_result->number_value != 0.0f); break;
-            case AST_STRING:  is_truthy = (ttt->condition_result->string_value != (void*)0 &&
-                                            strlen(ttt->condition_result->string_value) > 0); break;
-            case AST_BOOL:  is_truthy = (ttt->condition_result->bool_value != false); break;
-            case AST_NULL: is_truthy = (ttt->condition_result->type == AST_NULL); break;
-            default: is_truthy = false; break;
-        };
-        return is_truthy;
-    };
     AST_T* last_var = Init_AST(AST_NOOP);
 
-    while (get_res() == true) {
+    while (get_res_w(visitor, node, ttt) == true) {
         last_var = Visitor_Visit(visitor, node->while_body);
         if (visitor->returning || visitor->breaking) {
             break; // a 'return' fired inside the loop body -- stop iterating
         }
     };
     free(ttt);
+    visitor->breaking = false;
     return last_var;
 };
 AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
@@ -355,14 +347,14 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
 
     if (op == TOKEN_AND || op == TOKEN_OR) {
         AST_T* left = Visitor_Visit(visitor, node->binop_left);
-        int lv = is_truthy(left);
+        int lv = is_truthyf(left);
 
         AST_T* result = Init_AST(AST_BOOL);
         if (op == TOKEN_AND && !lv) { result->bool_value = 0; return result; }
         if (op == TOKEN_OR  &&  lv) { result->bool_value = 1; return result; }
 
         AST_T* right = Visitor_Visit(visitor, node->binop_right);
-        result->bool_value = is_truthy(right);
+        result->bool_value = is_truthyf(right);
         result->current_line = left->current_line;
         return result;
     }
@@ -436,6 +428,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                 };
                 case AST_STRING:{
                     result = Init_AST(AST_STRING);
+                    result->string_value = malloc(strlen(left->string_value) + 1);
                     strcpy(result->string_value, left->string_value);
                     break;
                 };
@@ -454,6 +447,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                 };
                 case AST_STRING:{
                     result = Init_AST(AST_STRING);
+                    result->string_value = malloc(strlen(right->string_value) + 1);
                     strcpy(result->string_value, right->string_value);
                     break;
                 };
@@ -496,9 +490,9 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
                     printf("Tripped on binary operation, modulo by zero, at line %d\n", node->current_line);
                     exit(1);
                 }
-                result->number_value = fmodf(left->number_value, right->number_value);
+                result->number_value = fmod(left->number_value, right->number_value);
                 break;
-            case TOKEN_EXPONENT: result->number_value = powf(left->number_value, right->number_value); break;
+            case TOKEN_EXPONENT: result->number_value = pow(left->number_value, right->number_value); break;
             default:
                 printf("Tripped on binary operation, unsupported operator %d, at line %d\n", node->binop_op, node->current_line);
                 exit(1);
@@ -521,7 +515,7 @@ AST_T* VV_BinOp(Visitor_T* visitor, AST_T* node) {
 AST_T* VV_Unary_Not(Visitor_T* visitor, AST_T* node) {
     AST_T* operand = Visitor_Visit(visitor, node->unary_operand);
     AST_T* result = Init_AST(AST_BOOL);
-    result->bool_value = !is_truthy(operand);
+    result->bool_value = !is_truthyf(operand);
     return result;
 };
 AST_T* VV_Dot(Visitor_T* visitor, AST_T* node) {
@@ -753,7 +747,11 @@ AST_T* VV_Function_Definition(Visitor_T* visitor, AST_T* node) {
 AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
     if (strcmp(node->function_call_name, "print") == 0) {
         return builtin_function_print(visitor, node->function_call_arguments, node->function_call_arguments_size);
-    } else if (strcmp(node->function_call_name, "gc") == 0) { // garbage collector
+    } else if (strcmp(node->function_call_name, "err") == 0) {
+        return builtin_function_err(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "exit") == 0) {
+        return builtin_function_exit(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "gc") == 0) {
         return builtin_function_gc(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "gcStats") == 0) {
         return builtin_function_gc_stats(visitor, node->function_call_arguments, node->function_call_arguments_size);
@@ -795,6 +793,8 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         return builtin_function_window_get_time(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowShouldClose") == 0) {
         return builtin_function_window_should_close(visitor, node->function_call_arguments, node->function_call_arguments_size);
+    } else if (strcmp(node->function_call_name, "windowWait") == 0) {
+        return builtin_function_window_wait(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowClear") == 0) {
         return builtin_function_window_clear(visitor, node->function_call_arguments, node->function_call_arguments_size);
     } else if (strcmp(node->function_call_name, "windowDrawRect") == 0) {
@@ -823,12 +823,20 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         if (fdef == (void*)0) {
             printf("Tripped on undefined method '%s', at line %d\n", node->function_call_name, node->current_line);
             exit(1);
-        }
+        };
+        if (fdef->function_definition_public == false && node->file_id != fdef->file_id){
+            printf("Tripped on function call '%s', function is private from this scope (at line %d)\n",
+                   node->function_call_name, node->current_line);
+            free(fdef);
+            exit(1);
+        };
         if (node->function_call_arguments_size != fdef->function_definition_args_size) {
             printf("Tripped on function call '%s', expected %zu args, got %zu (at line %d)\n",
                    node->function_call_name, fdef->function_definition_args_size, node->function_call_arguments_size, node->current_line);
             exit(1);
-        }
+            free(fdef);
+        };
+        visitor->call_depth++;
         Scope_T* call_scope = fdef->function_definition_body->scope;
         size_t saved_scope_size = call_scope->variable_definitions_size;
 
@@ -839,8 +847,8 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
 
         for (int i=0;i<(int)node->function_call_arguments_size;i++){
             AST_T* ast_var = (AST_T*) fdef->function_definition_args[i];
-
             AST_T* ast_vardef = Init_AST(AST_VARIABLE_DEFINITION);
+
             ast_vardef->variable_definition_value = evaluated_args[i];
             ast_vardef->variable_definition_variable_name = (char*) calloc(strlen(ast_var->variable_name) + 1, sizeof(char));
             ast_vardef->current_line = evaluated_args[i]->current_line;
@@ -852,6 +860,7 @@ AST_T* VV_Function_Call(Visitor_T* visitor, AST_T* node) {
         AST_T* result = Visitor_Visit(visitor, fdef->function_definition_body);
         visitor->returning = 0;
         visitor->breaking = false;
+        visitor->call_depth--;
 
         call_scope->variable_definitions_size = saved_scope_size;
 

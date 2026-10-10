@@ -1,0 +1,98 @@
+include <strings>;
+include <maths>;
+include <chars>;
+include <tree>;
+
+func tappend(target_table, target_size, copied_table, copied_size) {
+    var max = target_size + copied_size;
+    for (var i = copied_size + 1: i <= max: "++"){
+        table_set_index(target_table, i, table_get_from_index(copied_table, i-copied_size));
+    };
+};
+
+class File {
+    "id" : 0,
+    "name" : null,
+    "contents" : null
+};
+
+var f_id_next = 0;
+
+func File_Create(fileName){
+    File f;
+    f.name = fileName;
+    f.contents = readFile(fileName);
+    f.id = f_id_next;
+    f_id_next += 1;
+    return f;
+};
+
+func File_Write(f, contents){
+    f.contents = contents;
+};
+
+func File_Append(f, contents){
+    f.contents = f.contents + contents;
+};
+
+func File_Read(f){
+    return f.contents;
+};
+
+func File_Length(f){
+    return strlen(f.contents);
+};
+
+func File_Save(f){
+    return writeFile(f.name, f.contents, false);
+};
+
+class DynamicArray {
+    "length" : 1,
+    "contents" : null
+};
+
+func DynamicArray_Create(){
+    DynamicArray x;
+    table buffer = [null];
+    x.length = 1;
+    x.contents = buffer;
+    return x;
+};
+
+func DynamicArray_Add(x, item) {
+    if (x.length > 1) {
+        x.length = x.length + 1;
+        table_set_index(x.contents, x.length, item);
+    } else if (x.length == 1) {
+        table_set_index(x.contents, x.length, item);
+    } else {
+        err("Length of dynamic array is 0 or less.%nManually fill the buffer and up the size to 1, then try again.%n");
+    };
+};
+
+func DynamicArray_RemoveTop(x, index) {
+    if (x.length > 0) {
+        table_set_index(x.contents, x.length - 1, null);
+        x.length = x.length - 1;
+    };
+};
+
+func DynamicArray_RemoveAt(x, index) {
+    if (x.length > 0) {
+        for (var i = index : i < x.length - 1 : "++") {
+            var next_val = table_get_from_index(x.contents, i + 1);
+            table_set_index(x.contents, i, next_val);
+        };
+        table_set_index(x.contents, x.length - 1, null);
+        x.length = x.length - 1;
+    };
+};
+
+func DynamicArray_Contents(x){
+    return x.contents;
+};
+
+func DynamicArray_Length(x){
+    return x.length;
+};

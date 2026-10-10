@@ -1,0 +1,13 @@
+include <signals>;
+
+Signal Player_Joined;
+Player_Joined.init("PlayerJoined");
+
+func player_joined(player){
+    print("Player joined:");
+    print(player);
+};
+
+Player_Joined.connect(player_joined);
+
+signal_runtime(Player_Joined, "Jamal");

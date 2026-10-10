@@ -33,7 +33,6 @@ AST_T* VV_Variable(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Enum(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Ternary(Visitor_T* visitor, AST_T* node);
 AST_T* VV_If(Visitor_T* visitor, AST_T* node);
-AST_T* VV_If_Else(Visitor_T* visitor, AST_T* node);
 AST_T* VV_Checks(Visitor_T* visitor, AST_T* node);
 AST_T* VV_For(Visitor_T* visitor, AST_T* node);
 AST_T* VV_While(Visitor_T* visitor, AST_T* node);
