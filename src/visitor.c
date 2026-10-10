@@ -33,12 +33,6 @@ For_Tuple* get_for_data(Visitor_T* visitor, AST_T* node) {
     return Tuple;
 };
 
-While_Tuple* get_while_data(Visitor_T* visitor, AST_T* node) {
-    While_Tuple* Tuple = Init_While_Tuple();
-    Tuple->condition_result = Visitor_Visit(visitor, node->while_condition);
-    return Tuple;
-};
-
 Visitor_T* Init_Visitor(){
     Visitor_T* visitor = calloc(1, sizeof(struct VISITOR_STRUCT));
     visitor->returning = 0;
@@ -332,7 +326,7 @@ AST_T* VV_While(Visitor_T* visitor, AST_T* node) {
     While_Tuple* ttt = get_while_data(visitor, node);
     AST_T* last_var = Init_AST(AST_NOOP);
 
-    while (get_res_w(visitor, node, ttt) == true) {
+    while ((tt.condition_result = Visitor_Visit(visitor, node->while_condition)), get_res_w(visitor, node, &tt) == true) {
         last_var = Visitor_Visit(visitor, node->while_body);
         if (visitor->returning || visitor->breaking) {
             break; // a 'return' fired inside the loop body -- stop iterating
