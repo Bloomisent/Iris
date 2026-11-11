@@ -1,3 +1,0 @@
-include <standard>;
-
-print("Please refrain from using the arrays library as it is deprecated. Instead, use the newer standard library.%n");
