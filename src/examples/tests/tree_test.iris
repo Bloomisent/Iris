@@ -1,0 +1,16 @@
+include <tree>;
+
+func main() {
+    var myTree = null;
+    myTree = insertNode(myTree, false, 50);
+    insertNode(myTree, false, 30);
+    insertNode(myTree, false, 70);
+
+    insertNode(myTree, true, 30);
+    insertNode(myTree, true, 70);
+
+    inOrder(myTree, false);
+    return 0;
+};
+
+main();

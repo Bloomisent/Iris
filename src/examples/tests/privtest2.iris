@@ -1,0 +1,15 @@
+func private hello(){
+    print("Hello world%n");
+};
+
+func secret(){
+    hello();
+};
+
+func private greet_main(times){
+    print(times, "times! That's ", times, "cookies for me!%n");
+};
+
+func greet(times){
+    greet_main(times);
+};

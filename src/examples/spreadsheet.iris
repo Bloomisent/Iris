@@ -1,0 +1,30 @@
+table t = [[0]];
+
+var writingFile = false;
+
+func main(){
+    print("Welcome to Iris Spreadsheets!%n%n");
+
+    while (true){
+        var command = input("Command: ", false);
+        if (command == "new") {
+            if (writingFile) {
+                print("Unable to make new file");
+            };
+            t = [[0]];
+        } else if (command == "write") {
+            var x_axis = input("X Axis: ", false);
+            var y_axis = input("Y Axis: ", false);
+            var value = input("Value: ", false);
+
+            table_get_index(t, x_axis, value);
+        } else if (command == "print") {
+            var x_axis = input("X Axis: ", false);
+            var y_axis = input("Y Axis: ", false);
+
+            table_get_from_index(table_get_from_index(t, x_axis), y_axis);
+        };
+    };
+};
+
+main();

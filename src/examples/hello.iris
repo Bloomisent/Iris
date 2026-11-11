@@ -1,0 +1,46 @@
+for (var m = 35:m<=100:m+=1){
+    print("hello!");
+};
+
+print("%n");
+
+var x = 35;
+var t = 45.4;
+
+print(x, " : ", type(x), "%n");
+print(t, " : ", type(t), "%n");
+
+const hi = "v";
+var bye = hi;
+
+print(bye, "%n");
+
+# var o : number = 3; errors, since a number isnt an integer #
+# var l : number = 2; errors, since a number isnt an integer #
+
+var o : integer = 3; # works! #
+var l : integer = 2; # works! #
+
+print(o + l, "%n");
+
+var lmao : string = "hello!";
+# lmao = o; errors, good #
+
+try {
+    var v : number = 3;
+} catch (e) {
+    print("caught error: '", e, "'!%n");
+};
+
+try {
+    var s : number = 3.3;
+    var v : integer = 3;
+
+    const oo = s + v;
+    print(oo, "%n");
+} catch (e) {
+    print("caught error: '", e, "'!%n");
+};
+
+tuple bummer = ("bonjour", "hallo", "mambo");
+print(type(bummer));

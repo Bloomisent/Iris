@@ -1,0 +1,65 @@
+const x = 4;
+print(x, "%n");
+
+const star = "star";
+
+var z = x / 5;
+print(z, "%n");
+
+class Test {
+    "quack" : null,
+    "hi" : null,
+    "init" : func(self) {
+        print("init started%n");
+        self.quack = x;
+        self.hi = "hi";
+        print("init done%n");
+    }
+};
+
+print(type(Test), "%n");
+
+Test test;
+test.init();
+print(test.quack, "%n");
+
+test.quack += 2;
+print(test.quack, "%n");
+
+stredit(test.hi, 2, "x");
+
+print(star, "%n");
+print(test.hi, "%n");
+
+enum {
+    ALIEN,
+    TABOO,
+    LASER
+};
+
+print("hi%n");
+
+print(ALIEN, "%n");
+
+var lolest = null;
+lolest ?= 2;
+
+var notanull = 1;
+notanull ?= 2;
+
+print(lolest, "%n");
+print(notanull, "%n");
+
+func loop() {
+    for (var i = 1: i!=0:"++"){
+        if (i == 10) {
+            print("Stopped at 10%n");
+            break;
+        } else {
+            print(i, "%n");
+        };
+    };
+};
+
+const e = loop();
+print(e, "%n");

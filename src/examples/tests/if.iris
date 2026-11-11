@@ -1,0 +1,35 @@
+var v = null; # swap this for a different value to test it out #
+var e = type(v);
+
+if (e == "NULL") {
+    print("NULL");
+} else if (e == "NUMBER") {
+    print("NUMBER");
+} else if (e == "STRING") {
+    print("STRING");
+} else {
+    print("UNKNOWN");
+}; # replacing the overly complicated 'ifelse' statement #
+print("%n");
+
+var x = true;
+
+if (x == true) {
+    print("true%n");
+} else {
+    print("false%n");
+};
+
+var l = "t";
+if (l == "m"){
+    print("hi%n");
+}; # testing if if statements crash after no else #
+
+print("v%n");
+#
+ifelse (l == "t"){
+    print("nanana booboo");
+} else {
+    print("noooo");
+};
+# # Seeing if deprecated message appears #

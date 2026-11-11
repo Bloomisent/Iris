@@ -1,0 +1,13 @@
+include "privtest2.iris";
+
+secret();
+
+for (var i = 0: i<100: "++"){ # testing legacy custom enders #
+    greet(i);
+};
+
+for (var i = 0: i<100: i+=3){ # testing custom enders #
+    greet(i);
+};
+
+# Both can co-exist! #

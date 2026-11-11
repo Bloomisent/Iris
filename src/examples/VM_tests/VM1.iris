@@ -1,0 +1,10 @@
+print(1 + 2 * 3);
+print(10 / 4);
+print(1.5 + 2);
+print(-3);
+
+print("Hello\n");
+
+table x = [];
+print("table\n");
+print(x);
